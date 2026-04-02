@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Cowork — Mapa de Skills</title>
+  <style>
+    :root {
+      --am:#6366f1; --am-light:#eef2ff;
+      --ob:#22c55e; --ob-light:#f0fdf4;
+      --sup:#f59e0b; --sup-light:#fffbeb;
+      --com:#ec4899; --com-light:#fdf2f8;
+      --gen:#64748b; --gen-light:#f8fafc;
+      --bg:#f1f5f9; --card-bg:#ffffff;
+      --text:#1e293b; --muted:#64748b; --border:#e2e8f0; --radius:14px;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+    .header { background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%); padding:40px 48px 36px; color:white; }
+    .header-inner { max-width:1280px; margin:0 auto; }
+    .header-logo { font-size:13px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#94a3b8; margin-bottom:10px; }
+    .header h1 { font-size:32px; font-weight:700; letter-spacing:-.5px; margin-bottom:8px; }
+    .header p { font-size:15px; color:#94a3b8; max-width:560px; line-height:1.6; }
+    .header-stats { display:flex; gap:32px; margin-top:28px; }
+    .stat { display:flex; flex-direction:column; }
+    .stat-num { font-size:28px; font-weight:700; color:white; line-height:1; }
+    .stat-label { font-size:12px; color:#94a3b8; margin-top:4px; }
+    .updated { font-size:11px; color:#475569; margin-top:20px; }
+
+    .filters-bar { background:white; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; }
+    .filters-inner { max-width:1280px; margin:0 auto; padding:0 48px; display:flex; gap:4px; overflow-x:auto; scrollbar-width:none; }
+    .filters-inner::-webkit-scrollbar { display:none; }
+    .filter-btn { display:flex; align-items:center; gap:8px; padding:14px 20px; border:none; background:transparent; font-size:14px; font-weight:500; color:var(--muted); cursor:pointer; white-space:nowrap; border-bottom:3px solid transparent; transition:all .18s; }
+    .filter-btn:hover { color:var(--text); }
+    .filter-btn.active.all { border-bottom-color:#0f172a; color:#0f172a; }
+    .filter-btn.active.am  { border-bottom-color:var(--am);  color:var(--am);  }
+    .filter-btn.active.ob  { border-bottom-color:var(--ob);  color:var(--ob);  }
+    .filter-btn.active.sup { border-bottom-color:var(--sup); color:var(--sup); }
+    .filter-btn.active.com { border-bottom-color:var(--com); color:var(--com); }
+    .filter-btn.active.gen { border-bottom-color:var(--gen); color:var(--gen); }
+    .filter-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .filter-count { background:#f1f5f9; color:#64748b; font-size:12px; font-weight:600; padding:1px 7px; border-radius:99px; }
+
+    .main { max-width:1280px; margin:0 auto; padding:36px 48px; }
+    .section-title { font-size:12px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:20px; margin-top:40px; display:flex; align-items:center; gap:10px; }
+    .section-title:first-of-type { margin-top:0; }
+    .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+    .skills-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:20px; }
+
+    .skill-card { background:var(--card-bg); border:1px solid var(--border); border-radius:var(--radius); padding:24px; display:flex; flex-direction:column; gap:14px; transition:box-shadow .2s,transform .2s; cursor:default; }
+    .skill-card:hover { box-shadow:0 8px 24px rgba(0,0,0,.09); transform:translateY(-2px); }
+    .skill-card.hidden { display:none; }
+    .card-header { display:flex; align-items:flex-start; gap:14px; }
+    .card-icon { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+    .card-meta { flex:1; min-width:0; }
+    .card-name { font-size:15px; font-weight:700; color:var(--text); line-height:1.3; }
+    .card-trigger { font-size:12px; color:var(--muted); margin-top:3px; font-style:italic; }
+    .card-desc { font-size:13.5px; color:#475569; line-height:1.6; }
+    .card-tags { display:flex; flex-wrap:wrap; gap:6px; }
+    .tag { font-size:11px; font-weight:600; padding:3px 10px; border-radius:99px; letter-spacing:.04em; }
+    .tag-am  { background:var(--am-light);  color:var(--am); }
+    .tag-ob  { background:var(--ob-light);  color:#15803d; }
+    .tag-sup { background:var(--sup-light); color:#b45309; }
+    .tag-com { background:var(--com-light); color:#be185d; }
+    .tag-gen { background:var(--gen-light); color:var(--gen); border:1px solid var(--border); }
+    .card-footer { display:flex; align-items:center; gap:8px; padding-top:2px; }
+    .card-type { font-size:11px; font-weight:600; padding:3px 10px; border-radius:6px; background:#f8fafc; color:#64748b; border:1px solid #e2e8f0; }
+    .card-auto-badge { font-size:11px; font-weight:600; padding:3px 10px; border-radius:6px; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
+
+    .legend { background:white; border:1px solid var(--border); border-radius:var(--radius); padding:20px 24px; margin-bottom:32px; display:flex; flex-wrap:wrap; gap:20px; align-items:center; }
+    .legend-label { font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; flex-shrink:0; }
+    .legend-items { display:flex; flex-wrap:wrap; gap:10px; }
+    .legend-item { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--text); }
+    .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .empty-state { text-align:center; padding:60px 20px; color:var(--muted); display:none; }
+    .empty-state.visible { display:block; }
+
+    @media (max-width:768px) {
+      .header { padding:28px 24px; }
+      .filters-inner { padding:0 24px; }
+      .main { padding:24px; }
+      .skills-grid { grid-template-columns:1fr; }
+      .header-stats { gap:20px; }
+      .header h1 { font-size:24px; }
+    }
+  </style>
+</head>
+<body>
+<div class="header">
+  <div class="header-inner">
+    <div class="header-logo">Cloud Humans · ClaudIA Cowork</div>
+    <h1>🗺️ Mapa de Skills</h1>
+    <p>Tudo que o time pode automatizar ou delegar para o Claude Cowork. Filtre por área para ver as skills relevantes ao seu contexto.</p>
+    <div class="header-stats">
+      <div class="stat"><span class="stat-num">22</span><span class="stat-label">skills disponíveis</span></div>
+      <div class="stat"><span class="stat-num">5</span><span class="stat-label">áreas cobertas</span></div>
+      <div class="stat"><span class="stat-num">10</span><span class="stat-label">automatizáveis</span></div>
+    </div>
+    <div class="updated">⟳ Atualizado automaticamente em 02/04/2026 às 15:17h UTC</div>
+  </div>
+</div>
+
+<div class="filters-bar">
+  <div class="filters-inner">
+    <button class="filter-btn active all" data-filter="all" onclick="filterSkills('all',this)">
+      <span class="filter-dot" style="background:#0f172a"></span> Todas as Áreas
+      <span class="filter-count">22</span>
+    </button>
+    <button class="filter-btn am" data-filter="am" onclick="filterSkills('am',this)">
+      <span class="filter-dot" style="background:var(--am)"></span> Account Management
+      <span class="filter-count">8</span>
+    </button>
+    <button class="filter-btn ob" data-filter="ob" onclick="filterSkills('ob',this)">
+      <span class="filter-dot" style="background:var(--ob)"></span> Onboarding
+      <span class="filter-count">5</span>
+    </button>
+    <button class="filter-btn sup" data-filter="sup" onclick="filterSkills('sup',this)">
+      <span class="filter-dot" style="background:var(--sup)"></span> Suporte
+      <span class="filter-count">8</span>
+    </button>
+    <button class="filter-btn com" data-filter="com" onclick="filterSkills('com',this)">
+      <span class="filter-dot" style="background:var(--com)"></span> Comercial
+      <span class="filter-count">2</span>
+    </button>
+    <button class="filter-btn gen" data-filter="gen" onclick="filterSkills('gen',this)">
+      <span class="filter-dot" style="background:var(--gen)"></span> Produtividade Geral
+      <span class="filter-count">6</span>
+    </button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="legend">
+    <span class="legend-label">Áreas:</span>
+    <div class="legend-items">
+      <div class="legend-item"><span class="legend-dot" style="background:var(--am)"></span> Account Management</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--ob)"></span> Onboarding</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--sup)"></span> Suporte</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--com)"></span> Comercial</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--gen)"></span> Produtividade Geral</div>
+    </div>
+    <div class="legend-items" style="margin-left:auto">
+      <div class="legend-item"><span style="background:#eff6ff;color:#2563eb;font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;border:1px solid #bfdbfe;">Automatizável</span> pode ser agendada</div>
+    </div>
+  </div>
+
+  <div class="empty-state" id="empty-state">
+    <div style="font-size:40px;margin-bottom:12px">🔍</div>
+    <div style="font-size:15px">Nenhuma skill encontrada para essa área.</div>
+  </div>
+
+  
+  <div class="section-title" data-section="am">Account Management</div>
+  <div class="skills-grid">
+    
+    <div class="skill-card" data-areas="com am">
+      <div class="card-header">
+        <div class="card-icon" style="background:#fdf2f8;">📝</div>
+        <div class="card-meta">
+          <div class="card-name">aditivo-renovacao</div>
+          <div class="card-trigger">"fazer um aditivo" · "criar o termo de renovação" · "montar o aditivo do cliente X"</div>
+        </div>
+      </div>
+      <div class="card-desc">Redige termos aditivos de renovação contratual para clientes da Cloud Humans. Também use quando o usuário fornecer um contrato original e pedir para gerar o aditivo. Produz .docx profissional com logo no cabeçalho,…</div>
+      <div class="card-tags"><span class="tag tag-com">Comercial</span><span class="tag tag-am">Account Management</span></div>
+      <div class="card-footer">
+        <span class="card-type">📄 Documento</span>
+        
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="am">
+      <div class="card-header">
+        <div class="card-icon" style="background:#eef2ff;">🎯</div>
+        <div class="card-meta">
+          <div class="card-name">ch-action-plan</div>
+          <div class="card-trigger">"por onde eu começo com esse cliente?"</div>
+        </div>
+      </div>
+      <div class="card-desc">Gera um plano de ação priorizado para um cliente da Cloud Humans a partir dos dados do dashboard Metabase. Aceita o NOME do cliente (coleta dados automaticamente via MCP Metabase), métricas coladas diretamente, uploads…</div>
+      <div class="card-tags"><span class="tag tag-am">Account Management</span></div>
+      <div class="card-footer">
+        <span class="card-type">📊 Análise</span>
+        
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="am com">
+      <div class="card-header">
+        <div class="card-icon" style="background:#eef2ff;">📋</div>
+        <div class="card-meta">
+          <div class="card-name">ch-qbr-review</div>
+          <div class="card-trigger">"Quarterly Business Review" · "review trimestral" · "preparar apresentação do trimestre"</div>
+        </div>
+      </div>
+      <div class="card-desc">Prepara ou enriquece uma QBR (Quarterly Business Review) de um cliente Cloud Humans, buscando dados reais de Metabase, Slack, Fireflies e Airtable para preencher automaticamente os destaques do trimestre. Aceita um…</div>
+      <div class="card-tags"><span class="tag tag-am">Account Management</span><span class="tag tag-com">Comercial</span></div>
+      <div class="card-footer">
+        <span class="card-type">📊 Análise</span>
+        
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="am ob">
+      <div class="card-header">
+        <div class="card-icon" style="background:#eef2ff;">✅</div>
+        <div class="card-meta">
+          <div class="card-name">cs-task-gap-analysis</div>
+          <div class="card-trigger">"task gap analysis" · "criar tasks a partir de reuniões" · "cruzar reuniões com tasks abertas"</div>
+        </div>
+      </div>
+      <div class="card-desc">Analisa reuniões do Fireflies e tasks do Airtable para identificar compromissos com clientes sem task registrada — e cria essas tasks automaticamente com contexto, responsável e prioridade. Não cria tasks para "Novo…</div>
+      <div class="card-tags"><span class="tag tag-am">Account Management</span><span class="tag tag-ob">Onboarding</span></div>
+      <div class="card-footer">
+        <span class="card-type">⚡ Ação</span>
+        <span class="card-auto-badge">Automatizável</span>
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="am ob">
+      <div class="card-header">
+        <div class="card-icon" style="background:#eef2ff;">🔄</div>
+        <div class="card-meta">
+          <div class="card-name">daily-task-sync</div>
+          
+        </div>
+      </div>
+      <div class="card-desc">Atualiza diariamente o status e as notas das tasks ativas do time de Customer Success e Onboarding no Airtable, cruzando com o contexto dos últimos 3 dias (reuniões do Fireflies + mensagens do Slack). Ao final, envia um…</div>
+      <div class="card-tags"><span class="tag tag-am">Account Management</span><span class="tag tag-ob">Onboarding</span></div>
+      <div class="card-footer">
+        <span class="card-type">⚡ Ação</span>
+        <span class="card-auto-badge">Automatizável</span>
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="am ob">
+      <div class="card-header">
+        <div class="card-icon" style="background:#eef2ff;">🔍</div>
+        <div class="card-meta">
+          <div class="card-name">ids-duplicate-analysis</div>
+          <div class="card-trigger">"duplicadas" · "duplicatas" · "conteúdos similares"</div>
+        </div>
+      </div>
+      <div class="card-desc">Analisa a base de conhecimento (IDS) de um cliente Cloud Humans em busca de conteúdos duplicados ou semanticamente similares que possam prejudicar a Taxa de Retenção N1 da ClaudIA. Também use quando o contexto for…</div>
+      <div class="card-tags"><span class="tag tag-am">Account Management</span><span class="tag tag-ob">Onboarding</span></div>
+      <div class="card-footer">
+        <span class="card-type">📊 Análise</span>
+        
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="am ob">
+      <div class="card-header">
+        <div class="card-icon" style="background:#eef2ff;">📐</div>
+        <div class="card-meta">
+          <div class="card-name">ids-gap-analysis</div>
+          <div class="card-trigger">"cruzar a IDS com o diagnóstico" · "comparar a base com os conteúdos ideais" · "ver o que falta na IDS a partir do diagnóstico"</div>
+        </div>
+      </div>
+      <div class="card-desc">Cruza a IDS atual de um cliente Cloud Humans com os Conteúdos Ideais gerados pelo Diagnóstico Comercial Automatizado (Curva ABC) para identificar lacunas e oportunidades de melhoria na base de conhecimento. Atenção:…</div>
+      <div class="card-tags"><span class="tag tag-am">Account Management</span><span class="tag tag-ob">Onboarding</span></div>
+      <div class="card-footer">
+        <span class="card-type">📊 Análise</span>
+        
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="am">
+      <div class="card-header">
+        <div class="card-icon" style="background:#eef2ff;">📅</div>
+        <div class="card-meta">
+          <div class="card-name">weekly-summary</div>
+          <div class="card-trigger">"Gerar um relatório semanal da operação"</div>
+        </div>
+      </div>
+      <div class="card-desc">"Gerar um relatório semanal da operação"</div>
+      <div class="card-tags"><span class="tag tag-am">Account Management</span></div>
+      <div class="card-footer">
+        <span class="card-type">📄 Relatório</span>
+        <span class="card-auto-badge">Automatizável</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title" data-section="ob">Onboarding</div>
+  <div class="skills-grid">
+    
+    <div class="skill-card" data-areas="am ob">
+      <div class="card-header">
+        <div class="card-icon" style="background:#eef2ff;">✅</div>
+        <div class="card-meta">
+          <div class="card-name">cs-task-gap-analysis</div>
+          <div class="card-trigger">"task gap analysis" · "criar tasks a partir de reuniões" · "cruzar reuniões com tasks abertas"</div>
+        </div>
+      </div>
+      <div class="card-desc">Analisa reuniões do Fireflies e tasks do Airtable para identificar compromissos com clientes sem task registrada — e cria essas tasks automaticamente com contexto, responsável e prioridade. Não cria tasks para "Novo…</div>
+      <div class="card-tags"><span class="tag tag-am">Account Management</span><span class="tag tag-ob">Onboarding</span></div>
+      <div class="card-footer">
+        <span class="card-type">⚡ Ação</span>
+        <span class="card-auto-badge">Automatizável</span>
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="ob sup">
+      <div class="card-header">
+        <div class="card-icon" style="background:#f0fdf4;">📚</div>
+        <div class="card-meta">
+          <div class="card-name">cx-create-knowledge-base</div>
+          
+        </div>
+      </div>
+      <div class="card-desc">"Identificar padrões recorrentes de fricção no produto (via análise de texto) Priorizar o que deve ser resolvido primeiro (baseado em impacto real) Definir o tipo de ação ideal (Produto, KB, Processo ou Automação) Gerar…</div>
+      <div class="card-tags"><span class="tag tag-ob">Onboarding</span><span class="tag tag-sup">Suporte</span></div>
+      <div class="card-footer">
+        <span class="card-type">⚡ Ação</span>
+        
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="am ob">
+      <div class="card-header">
+        <div class="card-icon" style="background:#eef2ff;">🔄</div>
+        <div class="card-meta">
+          <div class="card-name">daily-task-sync</div>
+          
+        </div>
+      </div>
+      <div class="card-desc">Atualiza diariamente o status e as notas das tasks ativas do time de Customer Success e Onboarding no Airtable, cruzando com o contexto dos últimos 3 dias (reuniões do Fireflies + mensagens do Slack). Ao final, envia um…</div>
+      <div class="card-tags"><span class="tag tag-am">Account Management</span><span class="tag tag-ob">Onboarding</span></div>
+      <div class="card-footer">
+        <span class="card-type">⚡ Ação</span>
+        <span class="card-auto-badge">Automatizável</span>
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="am ob">
+      <div class="card-header">
+        <div class="card-icon" style="background:#eef2ff;">🔍</div>
+        <div class="card-meta">
+          <div class="card-name">ids-duplicate-analysis</div>
+          <div class="card-trigger">"duplicadas" · "duplicatas" · "conteúdos similares"</div>
+        </div>
+      </div>
+      <div class="card-desc">Analisa a base de conhecimento (IDS) de um cliente Cloud Humans em busca de conteúdos duplicados ou semanticamente similares que possam prejudicar a Taxa de Retenção N1 da ClaudIA. Também use quando o contexto for…</div>
+      <div class="card-tags"><span class="tag tag-am">Account Management</span><span class="tag tag-ob">Onboarding</span></div>
+      <div class="card-footer">
+        <span class="card-type">📊 Análise</span>
+        
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="am ob">
+      <div class="card-header">
+        <div class="card-icon" style="background:#eef2ff;">📐</div>
+        <div class="card-meta">
+          <div class="card-name">ids-gap-analysis</div>
+          <div class="card-trigger">"cruzar a IDS com o diagnóstico" · "comparar a base com os conteúdos ideais" · "ver o que falta na IDS a partir do diagnóstico"</div>
+        </div>
+      </div>
+      <div class="card-desc">Cruza a IDS atual de um cliente Cloud Humans com os Conteúdos Ideais gerados pelo Diagnóstico Comercial Automatizado (Curva ABC) para identificar lacunas e oportunidades de melhoria na base de conhecimento. Atenção:…</div>
+      <div class="card-tags"><span class="tag tag-am">Account Management</span><span class="tag tag-ob">Onboarding</span></div>
+      <div class="card-footer">
+        <span class="card-type">📊 Análise</span>
+        
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title" data-section="sup">Suporte</div>
+  <div class="skills-grid">
+    
+    <div class="skill-card" data-areas="sup">
+      <div class="card-header">
+        <div class="card-icon" style="background:#fffbeb;">🔗</div>
+        <div class="card-meta">
+          <div class="card-name">board-unthread-sync</div>
+          <div class="card-trigger">"rodar a sync do board com unthread" · "verificar pendências de suporte" · "checar tickets tech"</div>
+        </div>
+      </div>
+      <div class="card-desc">Daily sync between Azure Boards and Unthread tech tickets for Cloud Humans support. Use whenever someone asks to "rodar a sync do board com unthread", "verificar pendências de suporte", "checar tickets tech", "executar…</div>
+      <div class="card-tags"><span class="tag tag-sup">Suporte</span></div>
+      <div class="card-footer">
+        <span class="card-type">⚡ Ação</span>
+        <span class="card-auto-badge">Automatizável</span>
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="ob sup">
+      <div class="card-header">
+        <div class="card-icon" style="background:#f0fdf4;">📚</div>
+        <div class="card-meta">
+          <div class="card-name">cx-create-knowledge-base</div>
+          
+        </div>
+      </div>
+      <div class="card-desc">"Identificar padrões recorrentes de fricção no produto (via análise de texto) Priorizar o que deve ser resolvido primeiro (baseado em impacto real) Definir o tipo de ação ideal (Produto, KB, Processo ou Automação) Gerar…</div>
+      <div class="card-tags"><span class="tag tag-ob">Onboarding</span><span class="tag tag-sup">Suporte</span></div>
+      <div class="card-footer">
+        <span class="card-type">⚡ Ação</span>
+        
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="sup">
+      <div class="card-header">
+        <div class="card-icon" style="background:#fffbeb;">🔎</div>
+        <div class="card-meta">
+          <div class="card-name">cx-deep-analysis</div>
+          
+        </div>
+      </div>
+      <div class="card-desc">CX Product Friction & Contact Rate Analyst. Use this skill whenever the user asks to analyze support tickets, identify product friction, understand contact rate drivers, investigate customer pain patterns, or produce a…</div>
+      <div class="card-tags"><span class="tag tag-sup">Suporte</span></div>
+      <div class="card-footer">
+        <span class="card-type">📊 Análise</span>
+        
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="sup">
+      <div class="card-header">
+        <div class="card-icon" style="background:#fffbeb;">🗂️</div>
+        <div class="card-meta">
+          <div class="card-name">daily-board-cleanup</div>
+          <div class="card-trigger">"fazer o cleanup do board" · "triagem de tickets tech" · "identificar bugs novos no unthread"</div>
+        </div>
+      </div>
+      <div class="card-desc">Daily triage of open Unthread conversations to identify which ones should be escalated to Azure Boards as tech tickets. Use whenever someone asks to "fazer o cleanup do board", "triagem de tickets tech", "identificar…</div>
+      <div class="card-tags"><span class="tag tag-sup">Suporte</span></div>
+      <div class="card-footer">
+        <span class="card-type">⚡ Ação</span>
+        <span class="card-auto-badge">Automatizável</span>
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="sup">
+      <div class="card-header">
+        <div class="card-icon" style="background:#fffbeb;">💰</div>
+        <div class="card-meta">
+          <div class="card-name">financeiro-task-sync</div>
+          <div class="card-trigger">"Financeiro" · "Já existe" · "Precisa criar"</div>
+        </div>
+      </div>
+      <div class="card-desc">Valida as conversas abertas do projeto "Financeiro" no Unthread e sincroniza com tasks no Airtable. Para cada conversa não-fechada, classifica como "Já existe", "Precisa criar" ou "Precisa atualizar", e executa as ações…</div>
+      <div class="card-tags"><span class="tag tag-sup">Suporte</span></div>
+      <div class="card-footer">
+        <span class="card-type">⚡ Ação</span>
+        <span class="card-auto-badge">Automatizável</span>
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="sup">
+      <div class="card-header">
+        <div class="card-icon" style="background:#fffbeb;">💬</div>
+        <div class="card-meta">
+          <div class="card-name">sunne-reply-suggester</div>
+          <div class="card-trigger">"rodar sugestões do sunne" · "sugerir respostas no ch-sunne" · "checar o que precisa responder no sunne"</div>
+        </div>
+      </div>
+      <div class="card-desc">Lê mensagens recentes do canal Slack #ch-sunne e sugere respostas baseadas no conhecimento de produto (ClaudIA, CloudChat, Typebot/Eddie). As sugestões são postadas em thread aguardando aprovação do owner via emoji.…</div>
+      <div class="card-tags"><span class="tag tag-sup">Suporte</span></div>
+      <div class="card-footer">
+        <span class="card-type">💡 Sugestão</span>
+        <span class="card-auto-badge">Automatizável</span>
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="sup">
+      <div class="card-header">
+        <div class="card-icon" style="background:#fffbeb;">🧹</div>
+        <div class="card-meta">
+          <div class="card-name">unthread-resolved-sweep</div>
+          <div class="card-trigger">"needs_response" · "in_progress" · "Em Execução"</div>
+        </div>
+      </div>
+      <div class="card-desc">Automated sweep of Unthread conversations in "needs_response" (open), "in_progress", and "Em Execução" statuses to identify which ones have been resolved. For each clearly resolved conversation, fills the Product and…</div>
+      <div class="card-tags"><span class="tag tag-sup">Suporte</span></div>
+      <div class="card-footer">
+        <span class="card-type">⚡ Ação</span>
+        <span class="card-auto-badge">Automatizável</span>
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="sup">
+      <div class="card-header">
+        <div class="card-icon" style="background:#fffbeb;">📉</div>
+        <div class="card-meta">
+          <div class="card-name">volumetry-alert</div>
+          <div class="card-trigger">"rodar o alerta de volumetria" · "checar quedas de volume" · "verificar se algum cliente caiu de volume"</div>
+        </div>
+      </div>
+      <div class="card-desc">Monitora quedas de volumetria diária em projetos ClaudIA e decide se é um problema real analisando métricas complementares (retenção, erros, CSAT) do dashboard Metabase. Quando identifica um problema real, alerta no…</div>
+      <div class="card-tags"><span class="tag tag-sup">Suporte</span></div>
+      <div class="card-footer">
+        <span class="card-type">🔔 Monitoramento</span>
+        <span class="card-auto-badge">Automatizável</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title" data-section="com">Comercial</div>
+  <div class="skills-grid">
+    
+    <div class="skill-card" data-areas="com am">
+      <div class="card-header">
+        <div class="card-icon" style="background:#fdf2f8;">📝</div>
+        <div class="card-meta">
+          <div class="card-name">aditivo-renovacao</div>
+          <div class="card-trigger">"fazer um aditivo" · "criar o termo de renovação" · "montar o aditivo do cliente X"</div>
+        </div>
+      </div>
+      <div class="card-desc">Redige termos aditivos de renovação contratual para clientes da Cloud Humans. Também use quando o usuário fornecer um contrato original e pedir para gerar o aditivo. Produz .docx profissional com logo no cabeçalho,…</div>
+      <div class="card-tags"><span class="tag tag-com">Comercial</span><span class="tag tag-am">Account Management</span></div>
+      <div class="card-footer">
+        <span class="card-type">📄 Documento</span>
+        
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="am com">
+      <div class="card-header">
+        <div class="card-icon" style="background:#eef2ff;">📋</div>
+        <div class="card-meta">
+          <div class="card-name">ch-qbr-review</div>
+          <div class="card-trigger">"Quarterly Business Review" · "review trimestral" · "preparar apresentação do trimestre"</div>
+        </div>
+      </div>
+      <div class="card-desc">Prepara ou enriquece uma QBR (Quarterly Business Review) de um cliente Cloud Humans, buscando dados reais de Metabase, Slack, Fireflies e Airtable para preencher automaticamente os destaques do trimestre. Aceita um…</div>
+      <div class="card-tags"><span class="tag tag-am">Account Management</span><span class="tag tag-com">Comercial</span></div>
+      <div class="card-footer">
+        <span class="card-type">📊 Análise</span>
+        
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title" data-section="gen">Produtividade Geral</div>
+  <div class="skills-grid">
+    
+    <div class="skill-card" data-areas="gen">
+      <div class="card-header">
+        <div class="card-icon" style="background:#f8fafc;">📄</div>
+        <div class="card-meta">
+          <div class="card-name">docx</div>
+          
+        </div>
+      </div>
+      <div class="card-desc">"Use this skill whenever the user wants to create, read, edit, or manipulate Word documents (.docx files). docx', or requests to produce professional documents with formatting like tables of contents, headings, page…</div>
+      <div class="card-tags"><span class="tag tag-gen">Produtividade Geral</span></div>
+      <div class="card-footer">
+        <span class="card-type">📄 Documento</span>
+        
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="gen">
+      <div class="card-header">
+        <div class="card-icon" style="background:#f8fafc;">📋</div>
+        <div class="card-meta">
+          <div class="card-name">pdf</div>
+          
+        </div>
+      </div>
+      <div class="card-desc">Use this skill whenever the user wants to do anything with PDF files. This includes reading or extracting text/tables from PDFs, combining or merging multiple PDFs into one, splitting PDFs apart, rotating pages, adding…</div>
+      <div class="card-tags"><span class="tag tag-gen">Produtividade Geral</span></div>
+      <div class="card-footer">
+        <span class="card-type">📄 Documento</span>
+        
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="gen">
+      <div class="card-header">
+        <div class="card-icon" style="background:#f8fafc;">🎨</div>
+        <div class="card-meta">
+          <div class="card-name">pptx</div>
+          <div class="card-trigger">"deck,\" · "slides,\" · "presentation,\"</div>
+        </div>
+      </div>
+      <div class="card-desc">"Use this skill any time a .pptx file is involved in any way — as input, output, or both. This includes: creating slide decks, pitch decks, or presentations; reading, parsing, or extracting text from any .pptx file…</div>
+      <div class="card-tags"><span class="tag tag-gen">Produtividade Geral</span></div>
+      <div class="card-footer">
+        <span class="card-type">📄 Documento</span>
+        
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="gen">
+      <div class="card-header">
+        <div class="card-icon" style="background:#f8fafc;">⏰</div>
+        <div class="card-meta">
+          <div class="card-name">schedule</div>
+          
+        </div>
+      </div>
+      <div class="card-desc">"Create a scheduled task that can be run on demand or automatically on an interval."</div>
+      <div class="card-tags"><span class="tag tag-gen">Produtividade Geral</span></div>
+      <div class="card-footer">
+        <span class="card-type">⚙️ Configuração</span>
+        <span class="card-auto-badge">Automatizável</span>
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="gen">
+      <div class="card-header">
+        <div class="card-icon" style="background:#f8fafc;">🛠️</div>
+        <div class="card-meta">
+          <div class="card-name">skill-creator</div>
+          
+        </div>
+      </div>
+      <div class="card-desc">Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill…</div>
+      <div class="card-tags"><span class="tag tag-gen">Produtividade Geral</span></div>
+      <div class="card-footer">
+        <span class="card-type">⚙️ Configuração</span>
+        
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="gen">
+      <div class="card-header">
+        <div class="card-icon" style="background:#f8fafc;">📊</div>
+        <div class="card-meta">
+          <div class="card-name">xlsx</div>
+          <div class="card-trigger">"the xlsx in my downloads\"</div>
+        </div>
+      </div>
+      <div class="card-desc">"Use this skill any time a spreadsheet file is the primary input or output. This means any task where the user wants to: open, read, edit, or fix an existing .xlsx, .xlsm, .csv, or .tsv file (e.g., adding columns,…</div>
+      <div class="card-tags"><span class="tag tag-gen">Produtividade Geral</span></div>
+      <div class="card-footer">
+        <span class="card-type">📄 Documento</span>
+        
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function filterSkills(area, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const cards = document.querySelectorAll('.skill-card');
+    const sections = document.querySelectorAll('.section-title');
+    if (area === 'all') {
+      cards.forEach(c => c.classList.remove('hidden'));
+      sections.forEach(s => { s.style.display=''; if(s.nextElementSibling) s.nextElementSibling.style.display=''; });
+      document.getElementById('empty-state').classList.remove('visible');
+      return;
+    }
+    cards.forEach(card => {
+      card.classList.toggle('hidden', !card.dataset.areas.split(' ').includes(area));
+    });
+    sections.forEach(s => {
+      const grid = s.nextElementSibling;
+      const vis  = grid ? grid.querySelectorAll('.skill-card:not(.hidden)').length : 0;
+      s.style.display = vis ? '' : 'none';
+      if (grid) grid.style.display = vis ? '' : 'none';
+    });
+    document.getElementById('empty-state').classList.toggle(
+      'visible', !document.querySelectorAll('.skill-card:not(.hidden)').length
+    );
+  }
+</script>
+</body>
+</html>
