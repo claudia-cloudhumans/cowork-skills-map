@@ -4,12 +4,13 @@ Gerador do Skills Map — Cloud Humans Cowork
 Lê os SKILL.md de cada skill e gera o index.html atualizado.
 """
 
-import os, json, re, html as html_module
+import os, json, re, html as html_module, time, difflib
 from datetime import datetime, timezone
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(SCRIPT_DIR, "config.json")
-OUTPUT_PATH = os.path.join(SCRIPT_DIR, "index.html")
+SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
+CONFIG_PATH  = os.path.join(SCRIPT_DIR, "config.json")
+OUTPUT_PATH  = os.path.join(SCRIPT_DIR, "index.html")
+SEEN_LOG_PATH = os.path.join(SCRIPT_DIR, "seen_log.json")
 
 with open(CONFIG_PATH, "r", encoding="utf-8") as f:
     config = json.load(f)
@@ -18,9 +19,9 @@ SKILL_AREAS  = config["skill_areas"]
 SKILL_META   = config["skill_meta"]
 AREA_LABELS  = config["area_labels"]
 SKILLS_BASE  = config["skills_base_path"]
+NOVIDADES_WINDOW_H = 48  # horas
 
 # ── Detalhes para os modais ─────────────────────────────────────────────────
-# output_type: plan | html-report | docx | slack | action | none
 SKILL_DETAILS = {
   "ch-action-plan": {
     "prompt": "Plano de ação para o cliente [NOME DO CLIENTE]",
@@ -32,24 +33,15 @@ SKILL_DETAILS = {
   <div class="prev-plan-header">📋 Plano de Ação — <strong>Acme Corp</strong> <span class="prev-date">Semana 14</span></div>
   <div class="prev-plan-item p0">
     <div class="prev-priority">P0</div>
-    <div class="prev-content">
-      <strong>Taxa de Retenção N1 em 28% (abaixo do mínimo de 40%)</strong>
-      <p>Ajustar FlowPrompt de "Cancelamento" — atualmente transfere para humano sem tentar reter. Ativar retentação automática com oferta de desconto no CloudBlocks.</p>
-    </div>
+    <div class="prev-content"><strong>Taxa de Retenção N1 em 28% (abaixo do mínimo de 40%)</strong><p>Ajustar FlowPrompt de "Cancelamento" — atualmente transfere para humano sem tentar reter. Ativar retentação automática com oferta de desconto no CloudBlocks.</p></div>
   </div>
   <div class="prev-plan-item p1">
     <div class="prev-priority">P1</div>
-    <div class="prev-content">
-      <strong>18 motivos de N2 sem cobertura na IDS</strong>
-      <p>Criar conteúdos para "Prazo de entrega expresso", "Rastreio internacional" e "Política de reembolso parcial". Estimativa de +6pp na retenção.</p>
-    </div>
+    <div class="prev-content"><strong>18 motivos de N2 sem cobertura na IDS</strong><p>Criar conteúdos para "Prazo de entrega expresso", "Rastreio internacional" e "Política de reembolso parcial". Estimativa de +6pp na retenção.</p></div>
   </div>
   <div class="prev-plan-item p2">
     <div class="prev-priority">P2</div>
-    <div class="prev-content">
-      <strong>GenCX Score acima de 12%</strong>
-      <p>Revisar 8 respostas marcadas como ruins na última semana. 3 delas estão num FlowPrompt desatualizado.</p>
-    </div>
+    <div class="prev-content"><strong>GenCX Score acima de 12%</strong><p>Revisar 8 respostas marcadas como ruins na última semana. 3 delas estão num FlowPrompt desatualizado.</p></div>
   </div>
 </div>"""
   },
@@ -70,10 +62,8 @@ SKILL_DETAILS = {
     </div>
   </div>
   <div class="prev-slide-strip">
-    <div class="strip-slide s1"></div>
-    <div class="strip-slide s2"></div>
-    <div class="strip-slide s3 sel"></div>
-    <div class="strip-slide s4"></div>
+    <div class="strip-slide s1"></div><div class="strip-slide s2"></div>
+    <div class="strip-slide s3 sel"></div><div class="strip-slide s4"></div>
   </div>
 </div>"""
   },
@@ -86,9 +76,7 @@ SKILL_DETAILS = {
 <div class="prev-report">
   <div class="prev-report-header">🔍 IDS Duplicate Analysis — <strong>Acme Corp</strong></div>
   <div class="prev-report-stats">
-    <span class="rst high">🔴 12 pares críticos</span>
-    <span class="rst med">🟡 8 pares similares</span>
-    <span class="rst low">⚪ 3 revisar</span>
+    <span class="rst high">🔴 12 pares críticos</span><span class="rst med">🟡 8 similares</span><span class="rst low">⚪ 3 revisar</span>
   </div>
   <table class="prev-table">
     <tr><th>Conteúdo A</th><th>Conteúdo B</th><th>Score</th><th>Ação</th></tr>
@@ -106,9 +94,7 @@ SKILL_DETAILS = {
 <div class="prev-report">
   <div class="prev-report-header">📐 IDS Gap Analysis — <strong>Acme Corp</strong></div>
   <div class="prev-report-stats">
-    <span class="rst high">🔴 5 lacunas críticas</span>
-    <span class="rst med">🟡 11 a adaptar</span>
-    <span class="rst low">🟢 34 ok</span>
+    <span class="rst high">🔴 5 lacunas críticas</span><span class="rst med">🟡 11 a adaptar</span><span class="rst low">🟢 34 ok</span>
   </div>
   <table class="prev-table">
     <tr><th>Conteúdo Ideal (Diagnóstico)</th><th>Status na IDS</th><th>Impacto</th></tr>
@@ -116,6 +102,63 @@ SKILL_DETAILS = {
     <tr><td>Política de troca sem nota fiscal</td><td><span class="act review">Desatualizado</span></td><td>Médio</td></tr>
     <tr><td>Parcelamento no boleto</td><td><span class="act ok">Presente</span></td><td>—</td></tr>
   </table>
+</div>"""
+  },
+  "ids-quality-eval": {
+    "prompt": "Avaliar a qualidade dos conteúdos N1 da IDS do cliente [NOME]. Segue o CSV da base.",
+    "input": "CSV exportado da IDS com os conteúdos N1 do cliente (colunas: id, title, response).",
+    "output_label": "Relatório de qualidade com score por conteúdo",
+    "output_type": "html-report",
+    "output_preview": """
+<div class="prev-report">
+  <div class="prev-report-header">⭐ IDS Quality Eval — <strong>Acme Corp</strong></div>
+  <div class="prev-report-stats">
+    <span class="rst high">🔴 8 conteúdos críticos</span><span class="rst med">🟡 14 a melhorar</span><span class="rst low">🟢 41 ok</span>
+  </div>
+  <table class="prev-table">
+    <tr><th>Conteúdo</th><th>Score</th><th>Problema principal</th></tr>
+    <tr><td>Como cancelar pedido?</td><td><span class="score high">32%</span></td><td>Resposta vaga, sem passos</td></tr>
+    <tr><td>Prazo de entrega</td><td><span class="score med">61%</span></td><td>Não menciona feriados</td></tr>
+    <tr><td>Política de troca</td><td><span class="score low" style="background:#f0fdf4;color:#16a34a">88%</span></td><td>—</td></tr>
+  </table>
+</div>"""
+  },
+  "sales-diagnostico": {
+    "prompt": "Rodar o diagnóstico automatizado para o prospect/cliente [NOME]. Segue o CSV de conversas.",
+    "input": "CSV com conversas de suporte exportadas do helpdesk do cliente/prospect.",
+    "output_label": "Diagnóstico com curva ABC e conteúdos ideais",
+    "output_type": "html-report",
+    "output_preview": """
+<div class="prev-report">
+  <div class="prev-report-header">🔬 Diagnóstico Automatizado — <strong>Prospect X</strong></div>
+  <div class="prev-report-stats">
+    <span class="rst high">312 conversas analisadas</span><span class="rst med">23 temas mapeados</span>
+  </div>
+  <table class="prev-table">
+    <tr><th>Tema (TAG)</th><th>Volume</th><th>Tipo</th><th>Conteúdo Ideal</th></tr>
+    <tr><td>Rastreio de pedido</td><td>82 (26%)</td><td><span class="act ok">Conteúdo</span></td><td>Como rastrear seu pedido</td></tr>
+    <tr><td>Cancelamento</td><td>54 (17%)</td><td><span class="act merge">Edição</span></td><td>Política de cancelamento</td></tr>
+    <tr><td>Login/Acesso</td><td>40 (13%)</td><td><span class="act review">Visualiz.</span></td><td>—</td></tr>
+  </table>
+</div>"""
+  },
+  "typebot-prompt-agent": {
+    "prompt": "Abrir o prompt agent do Typebot",
+    "input": "Descrição do que o bloco GPT precisa fazer: classificar, extrair, decidir ou formatar. Cole o prompt atual se já tiver um.",
+    "output_label": "Prompt GPT otimizado para Typebot",
+    "output_type": "none",
+    "output_preview": """
+<div class="prev-action">
+  <div class="prev-action-title">🤖 Interface interativa do Prompt Agent</div>
+  <div class="prev-action-item">
+    <div class="act-badge created">Gerado</div>
+    <div class="act-text">Prompt de <strong>classificação de intenção</strong> com 5 categorias, few-shot examples e formato de saída JSON para o bloco GPT do Typebot.</div>
+  </div>
+  <div class="prev-action-item">
+    <div class="act-badge review">Iterado</div>
+    <div class="act-text">Versão refinada após testar os inputs do usuário — adicionado fallback para intenções ambíguas.</div>
+  </div>
+  <div class="prev-action-summary">Interface visual com preview em tempo real · Histórico de versões</div>
 </div>"""
   },
   "cs-task-gap-analysis": {
@@ -128,17 +171,17 @@ SKILL_DETAILS = {
   <div class="prev-action-title">✅ Tasks criadas automaticamente</div>
   <div class="prev-action-item">
     <div class="act-badge created">Criada</div>
-    <div class="act-text"><strong>Acme Corp</strong> — Ajustar FlowPrompt de cancelamento conforme combinado na reunião de 01/04 · Responsável: Marina · P1</div>
+    <div class="act-text"><strong>Acme Corp</strong> — Ajustar FlowPrompt de cancelamento conforme reunião de 01/04 · Marina · P1</div>
   </div>
   <div class="prev-action-item">
     <div class="act-badge created">Criada</div>
-    <div class="act-text"><strong>Beta Ltda</strong> — Enviar acesso ao Hub para novo analista · Responsável: João · P2</div>
+    <div class="act-text"><strong>Beta Ltda</strong> — Enviar acesso ao Hub para novo analista · João · P2</div>
   </div>
   <div class="prev-action-item">
     <div class="act-badge skipped">Já existe</div>
     <div class="act-text"><strong>Gama SA</strong> — Revisão de IDS já registrada (#4821)</div>
   </div>
-  <div class="prev-action-summary">3 reuniões analisadas · 2 tasks criadas · 1 já existia</div>
+  <div class="prev-action-summary">3 reuniões · 2 tasks criadas · 1 já existia</div>
 </div>"""
   },
   "daily-task-sync": {
@@ -153,11 +196,7 @@ SKILL_DETAILS = {
     <div class="slack-avatar">🤖</div>
     <div class="slack-body">
       <span class="slack-name">ClaudIA</span><span class="slack-time">08:05</span>
-      <div class="slack-text">📋 <strong>Daily Task Sync — 02/04</strong><br>
-      ✅ 14 tasks verificadas<br>
-      🔄 6 atualizadas com contexto de reuniões<br>
-      🆕 2 novas tarefas identificadas<br>
-      ⚠️ 1 cliente com task vencida: <strong>Acme Corp</strong></div>
+      <div class="slack-text">📋 <strong>Daily Task Sync — 02/04</strong><br>✅ 14 tasks verificadas · 🔄 6 atualizadas · 🆕 2 novas · ⚠️ 1 vencida: <strong>Acme Corp</strong></div>
     </div>
   </div>
 </div>"""
@@ -169,19 +208,10 @@ SKILL_DETAILS = {
     "output_type": "plan",
     "output_preview": """
 <div class="prev-plan">
-  <div class="prev-plan-header">📊 Weekly Summary — Semana 13 (24–30 Mar)</div>
-  <div class="prev-plan-item p0" style="--pc:#6366f1">
-    <div class="prev-priority" style="background:#eef2ff;color:#6366f1">📈</div>
-    <div class="prev-content"><strong>Principais variações de métricas</strong><p>Retenção média da base: 44% (+2pp vs semana anterior). 3 clientes abaixo de 35%: Acme, Beta, Gama.</p></div>
-  </div>
-  <div class="prev-plan-item p1" style="--pc:#22c55e">
-    <div class="prev-priority" style="background:#f0fdf4;color:#15803d">🏆</div>
-    <div class="prev-content"><strong>Melhores conquistas</strong><p>Cliente Delta atingiu 60% de retenção pela 1ª vez. Novo onboarding do maior cliente do trimestre concluído.</p></div>
-  </div>
-  <div class="prev-plan-item p2" style="--pc:#f59e0b">
-    <div class="prev-priority" style="background:#fffbeb;color:#b45309">🚨</div>
-    <div class="prev-content"><strong>Problemas a priorizar</strong><p>Acme: queda de 15pp na retenção por bug no FlowPrompt. Beta: 3 reuniões sem follow-up registrado.</p></div>
-  </div>
+  <div class="prev-plan-header">📊 Weekly Summary — Semana 13</div>
+  <div class="prev-plan-item p0" style="--pc:#6366f1"><div class="prev-priority" style="background:#eef2ff;color:#6366f1">📈</div><div class="prev-content"><strong>Principais variações</strong><p>Retenção média: 44% (+2pp). 3 clientes abaixo de 35%: Acme, Beta, Gama.</p></div></div>
+  <div class="prev-plan-item p1" style="--pc:#22c55e"><div class="prev-priority" style="background:#f0fdf4;color:#15803d">🏆</div><div class="prev-content"><strong>Melhores conquistas</strong><p>Delta atingiu 60% pela 1ª vez. Maior onboarding do trimestre concluído.</p></div></div>
+  <div class="prev-plan-item p2" style="--pc:#f59e0b"><div class="prev-priority" style="background:#fffbeb;color:#b45309">🚨</div><div class="prev-content"><strong>Problemas a priorizar</strong><p>Acme: queda de 15pp por bug no FlowPrompt. Beta: 3 reuniões sem follow-up.</p></div></div>
 </div>"""
   },
   "aditivo-renovacao": {
@@ -197,9 +227,7 @@ SKILL_DETAILS = {
   </div>
   <div class="prev-docx-body">
     <p><strong>CONTRATANTE:</strong> Acme Corp Ltda, CNPJ 12.345.678/0001-99</p>
-    <p><strong>CONTRATADA:</strong> Cloud Humans Tecnologia S.A.</p>
-    <div class="docx-clause"><strong>Cláusula 1ª — Objeto:</strong> Prorrogação do contrato por 12 meses, de 01/05/2026 a 30/04/2027.</div>
-    <div class="docx-clause"><strong>Cláusula 2ª — Reajuste:</strong> Valores reajustados em 5,83% (IPCA acum. 12 meses — Mar/26), passando de R$8.500 para <strong>R$8.995/mês</strong>.</div>
+    <div class="docx-clause"><strong>Cláusula 2ª — Reajuste:</strong> Valores reajustados em 5,83% (IPCA acum. 12 meses), passando de R$8.500 para <strong>R$8.995/mês</strong>.</div>
     <div class="docx-clause docx-clause-faded">Cláusula 3ª — Fidelidade · Cláusula 4ª — Rescisão · Assinaturas...</div>
   </div>
 </div>"""
@@ -212,10 +240,7 @@ SKILL_DETAILS = {
     "output_preview": """
 <div class="prev-report">
   <div class="prev-report-header">📚 KB gerada — <strong>12 novos conteúdos</strong></div>
-  <div class="prev-report-stats">
-    <span class="rst high">🔴 4 gaps críticos cobertos</span>
-    <span class="rst med">🟡 8 melhorias</span>
-  </div>
+  <div class="prev-report-stats"><span class="rst high">🔴 4 gaps críticos</span><span class="rst med">🟡 8 melhorias</span></div>
   <table class="prev-table">
     <tr><th>Pergunta gerada</th><th>Origem</th><th>Tipo</th></tr>
     <tr><td>Como rastrear pedido internacional?</td><td>47 tickets</td><td><span class="act ok">FAQ</span></td></tr>
@@ -236,10 +261,7 @@ SKILL_DETAILS = {
     <div class="slack-avatar">🤖</div>
     <div class="slack-body">
       <span class="slack-name">ClaudIA</span><span class="slack-time">08:12</span>
-      <div class="slack-text">⚠️ <strong>Alerta de volumetria</strong> — @marina<br>
-      A Acme Corp recebeu <strong>142 tickets ontem</strong>, queda de <strong>-48%</strong> vs. média dos últimos 7 dias (274/dia).<br><br>
-      🔍 <em>Investigação:</em> Retenção N1 estável (44%), sem erros de integração, CSAT normal.<br>
-      📌 <strong>Possível causa:</strong> Feriado regional ou queda no tráfego do e-commerce.</div>
+      <div class="slack-text">⚠️ <strong>Alerta de volumetria</strong> — @marina<br>Acme Corp: <strong>142 tickets ontem</strong>, queda de <strong>-48%</strong> vs. média (274/dia). Retenção e CSAT estáveis — possível feriado regional.</div>
     </div>
   </div>
 </div>"""
@@ -251,19 +273,10 @@ SKILL_DETAILS = {
     "output_type": "action",
     "output_preview": """
 <div class="prev-action">
-  <div class="prev-action-title">🧹 Sweep concluído — 34 conversas analisadas</div>
-  <div class="prev-action-item">
-    <div class="act-badge created">Movido</div>
-    <div class="act-text">Ticket #4821 — "Como integrar com Zendesk?" → <strong>Resolvido</strong> · Produto: Integração · Subproduto: Zendesk</div>
-  </div>
-  <div class="prev-action-item">
-    <div class="act-badge created">Movido</div>
-    <div class="act-text">Ticket #4808 — "FlowPrompt não salva" → <strong>Resolvido</strong> · Produto: Hub · Subproduto: FlowPrompt</div>
-  </div>
-  <div class="prev-action-item">
-    <div class="act-badge skipped">Skipped</div>
-    <div class="act-text">Ticket #4819 — "Erro na IDS ao importar CSV" → Aguardando resposta do cliente</div>
-  </div>
+  <div class="prev-action-title">🧹 Sweep concluído — 34 conversas</div>
+  <div class="prev-action-item"><div class="act-badge created">Movido</div><div class="act-text">Ticket #4821 — Resolvido · Produto: Integração · Subproduto: Zendesk</div></div>
+  <div class="prev-action-item"><div class="act-badge created">Movido</div><div class="act-text">Ticket #4808 — Resolvido · Produto: Hub · Subproduto: FlowPrompt</div></div>
+  <div class="prev-action-item"><div class="act-badge skipped">Skipped</div><div class="act-text">Ticket #4819 — Aguardando resposta do cliente</div></div>
   <div class="prev-action-summary">34 analisados · 22 movidos · 8 skipped · 4 para revisão humana</div>
 </div>"""
   },
@@ -274,20 +287,10 @@ SKILL_DETAILS = {
     "output_type": "action",
     "output_preview": """
 <div class="prev-action">
-  <div class="prev-action-title">🗂️ Board Cleanup — 28 tickets analisados</div>
-  <div class="prev-action-item">
-    <div class="act-badge created">Escalado</div>
-    <div class="act-text"><strong>#4830</strong> — "Bug: ClaudIA responde em inglês para clientes PT-BR" → Board #1204 criado · Cliente notificado via Slack</div>
-  </div>
-  <div class="prev-action-item">
-    <div class="act-badge review">Validar</div>
-    <div class="act-text"><strong>#4826</strong> — "IDS não atualiza após salvar" → Possivelmente duplicata do #1198. Verificar antes de escalar.</div>
-  </div>
-  <div class="prev-action-item">
-    <div class="act-badge skipped">Ignorado</div>
-    <div class="act-text"><strong>#4822</strong> — "Dúvida sobre relatórios" → Não é tech, redirecionar para CS</div>
-  </div>
-  <div class="prev-action-summary">28 analisados · 4 escalados (HIGH) · 3 para validação (MED) · 21 ignorados</div>
+  <div class="prev-action-title">🗂️ Board Cleanup — 28 tickets</div>
+  <div class="prev-action-item"><div class="act-badge created">Escalado</div><div class="act-text"><strong>#4830</strong> — "ClaudIA responde em inglês" → Board #1204 criado · Cliente notificado</div></div>
+  <div class="prev-action-item"><div class="act-badge review">Validar</div><div class="act-text"><strong>#4826</strong> — "IDS não atualiza" → Possível duplicata do #1198. Verificar.</div></div>
+  <div class="prev-action-summary">28 analisados · 4 escalados · 3 validação · 21 ignorados</div>
 </div>"""
   },
   "board-unthread-sync": {
@@ -298,16 +301,8 @@ SKILL_DETAILS = {
     "output_preview": """
 <div class="prev-slack">
   <div class="prev-slack-header"><span class="slack-hash">#</span>suporte-execucao-ia</div>
-  <div class="prev-slack-msg">
-    <div class="slack-avatar">🤖</div>
-    <div class="slack-body">
-      <span class="slack-name">ClaudIA</span><span class="slack-time">09:04</span>
-      <div class="slack-text">🔗 <strong>Board Sync — 02/04</strong><br>
-      ✅ <strong>#4801</strong> Board #1190 → <em>Done</em>. Ticket fechado e cliente notificado com explicação da correção.<br>
-      💬 <strong>#4815</strong> Board #1198 → <em>In Review</em>. Perguntei ao cliente se o problema persiste após o deploy de ontem.<br>
-      ⚠️ <strong>#4820</strong> Sem board vinculado — @suporte favor verificar manualmente.</div>
-    </div>
-  </div>
+  <div class="prev-slack-msg"><div class="slack-avatar">🤖</div><div class="slack-body"><span class="slack-name">ClaudIA</span><span class="slack-time">09:04</span>
+  <div class="slack-text">🔗 <strong>Board Sync — 02/04</strong><br>✅ #4801 → Fechado e cliente notificado.<br>💬 #4815 → Perguntei ao cliente se o problema persiste.<br>⚠️ #4820 → Sem board — @suporte verificar.</div></div></div>
 </div>"""
   },
   "cx-deep-analysis": {
@@ -318,24 +313,11 @@ SKILL_DETAILS = {
     "output_preview": """
 <div class="prev-report cx-report">
   <div class="prev-report-header">🔎 CX Deep Analysis — <strong>Últimas 4 semanas</strong></div>
-  <div class="prev-report-stats">
-    <span class="rst high">312 tickets analisados</span>
-    <span class="rst med">8 padrões identificados</span>
-    <span class="rst low">CSAT médio: 3.9</span>
-  </div>
+  <div class="prev-report-stats"><span class="rst high">312 tickets</span><span class="rst med">8 padrões</span><span class="rst low">CSAT 3.9</span></div>
   <div class="cx-patterns">
-    <div class="cx-pat">
-      <div class="cx-pat-bar" style="width:78%"></div>
-      <span class="cx-pat-name">Rastreio de pedido</span><span class="cx-pat-count">82 tickets (26%)</span>
-    </div>
-    <div class="cx-pat">
-      <div class="cx-pat-bar" style="width:52%"></div>
-      <span class="cx-pat-name">Troca e devolução</span><span class="cx-pat-count">54 tickets (17%)</span>
-    </div>
-    <div class="cx-pat">
-      <div class="cx-pat-bar" style="width:38%"></div>
-      <span class="cx-pat-name">Cancelamento de pedido</span><span class="cx-pat-count">40 tickets (13%)</span>
-    </div>
+    <div class="cx-pat"><div class="cx-pat-bar" style="width:78%"></div><span class="cx-pat-name">Rastreio de pedido</span><span class="cx-pat-count">82 (26%)</span></div>
+    <div class="cx-pat"><div class="cx-pat-bar" style="width:52%"></div><span class="cx-pat-name">Troca e devolução</span><span class="cx-pat-count">54 (17%)</span></div>
+    <div class="cx-pat"><div class="cx-pat-bar" style="width:38%"></div><span class="cx-pat-name">Cancelamento</span><span class="cx-pat-count">40 (13%)</span></div>
   </div>
 </div>"""
   },
@@ -347,21 +329,9 @@ SKILL_DETAILS = {
     "output_preview": """
 <div class="prev-slack">
   <div class="prev-slack-header"><span class="slack-hash">#</span>ch-sunne</div>
-  <div class="prev-slack-msg">
-    <div class="slack-avatar">🧑</div>
-    <div class="slack-body">
-      <span class="slack-name">Ana (cliente)</span><span class="slack-time">14:32</span>
-      <div class="slack-text">Como faço para ativar o FUP automático no CloudChat?</div>
-    </div>
-  </div>
-  <div class="prev-slack-msg reply">
-    <div class="slack-avatar">🤖</div>
-    <div class="slack-body">
-      <span class="slack-name">ClaudIA</span><span class="slack-time">14:33</span>
-      <div class="slack-text">💡 <em>Sugestão (aguardando ✅ do owner):</em><br>
-      O FUP automático é ativado em <strong>Hub → Configurações → Comportamento → Follow-up</strong>. Você pode definir o tempo de inatividade e a mensagem padrão. Quer que eu envie o passo a passo completo?</div>
-    </div>
-  </div>
+  <div class="prev-slack-msg"><div class="slack-avatar">🧑</div><div class="slack-body"><span class="slack-name">Ana</span><span class="slack-time">14:32</span><div class="slack-text">Como ativo o FUP automático no CloudChat?</div></div></div>
+  <div class="prev-slack-msg reply"><div class="slack-avatar">🤖</div><div class="slack-body"><span class="slack-name">ClaudIA</span><span class="slack-time">14:33</span>
+  <div class="slack-text">💡 <em>Sugestão (aguardando ✅):</em><br>Em <strong>Hub → Configurações → Comportamento → Follow-up</strong>. Defina o tempo de inatividade e a mensagem.</div></div></div>
 </div>"""
   },
   "financeiro-task-sync": {
@@ -372,22 +342,43 @@ SKILL_DETAILS = {
     "output_preview": """
 <div class="prev-action">
   <div class="prev-action-title">💰 Financeiro Task Sync</div>
-  <div class="prev-action-item">
-    <div class="act-badge created">Criada</div>
-    <div class="act-text"><strong>Acme Corp</strong> — NF de março não recebida pelo cliente · CS Owner: Marina · Prioridade: Alta</div>
-  </div>
-  <div class="prev-action-item">
-    <div class="act-badge review">Atualizada</div>
-    <div class="act-text"><strong>Beta Ltda</strong> — Task #4102 atualizada: cobrança de fevereiro confirmada como paga</div>
-  </div>
-  <div class="prev-action-item">
-    <div class="act-badge skipped">Já existe</div>
-    <div class="act-text"><strong>Gama SA</strong> — Task #3987 já registrada e em andamento</div>
-  </div>
-  <div class="prev-action-summary">11 conversas analisadas · 3 tasks criadas · 2 atualizadas · 6 já existiam</div>
+  <div class="prev-action-item"><div class="act-badge created">Criada</div><div class="act-text"><strong>Acme Corp</strong> — NF de março não recebida · Marina · Alta</div></div>
+  <div class="prev-action-item"><div class="act-badge review">Atualizada</div><div class="act-text"><strong>Beta Ltda</strong> — Cobrança de fevereiro confirmada como paga</div></div>
+  <div class="prev-action-summary">11 conversas · 3 tasks criadas · 2 atualizadas · 6 já existiam</div>
 </div>"""
   },
 }
+
+# ── Seen log (rastreia status new/updated) ──────────────────────────────────
+def load_seen_log():
+    if os.path.exists(SEEN_LOG_PATH):
+        with open(SEEN_LOG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"skills": {}, "last_run": 0}
+
+def save_seen_log(log):
+    with open(SEEN_LOG_PATH, "w", encoding="utf-8") as f:
+        json.dump(log, f, ensure_ascii=False, indent=2)
+
+def word_diff_html(old_text, new_text):
+    """Gera HTML com diff word-level entre old_text e new_text."""
+    old_words = old_text.split()
+    new_words = new_text.split()
+    if old_words == new_words:
+        return ""
+    matcher = difflib.SequenceMatcher(None, old_words, new_words, autojunk=False)
+    parts = []
+    for op, i1, i2, j1, j2 in matcher.get_opcodes():
+        if op == "equal":
+            parts.append(html_module.escape(" ".join(old_words[i1:i2])))
+        elif op == "insert":
+            parts.append(f'<ins class="diff-ins">{html_module.escape(" ".join(new_words[j1:j2]))}</ins>')
+        elif op == "delete":
+            parts.append(f'<del class="diff-del">{html_module.escape(" ".join(old_words[i1:i2]))}</del>')
+        elif op == "replace":
+            parts.append(f'<del class="diff-del">{html_module.escape(" ".join(old_words[i1:i2]))}</del> '
+                         f'<ins class="diff-ins">{html_module.escape(" ".join(new_words[j1:j2]))}</ins>')
+    return " ".join(p for p in parts if p)
 
 # ── Ler skills ───────────────────────────────────────────────────────────────
 def read_skill_md(skill_dir):
@@ -426,14 +417,24 @@ def read_skill_md(skill_dir):
         cut = clean_desc[:200].rsplit(' ', 1)[0]
         clean_desc = cut + "…"
 
-    return {"name": name, "description": clean_desc or description[:200], "triggers": triggers}
+    return {
+        "name": name,
+        "description": clean_desc or description[:200],
+        "raw_description": description,   # para diff
+        "triggers": triggers,
+    }
 
 
 def collect_skills():
     skills = []
+    seen_log = load_seen_log()
+    log_skills = seen_log.get("skills", {})
+    now_ts = time.time()
+
     if not os.path.isdir(SKILLS_BASE):
         print(f"[WARN] Diretório de skills não encontrado: {SKILLS_BASE}")
         return skills
+
     for entry in sorted(os.scandir(SKILLS_BASE), key=lambda e: e.name):
         if not entry.is_dir():
             continue
@@ -441,24 +442,63 @@ def collect_skills():
         skill_data = read_skill_md(entry.path)
         if not skill_data:
             continue
+
+        skill_md_path = os.path.join(entry.path, "SKILL.md")
+        current_mtime = os.path.getmtime(skill_md_path)
+        age_hours = (now_ts - current_mtime) / 3600
+
+        # Determinar status: new | updated | unchanged
+        log_entry = log_skills.get(skill_key)
+        diff_html  = ""
+        if log_entry is None:
+            # Primeira vez que vemos esta skill
+            if age_hours < NOVIDADES_WINDOW_H:
+                status = "new"
+            else:
+                status = "unchanged"
+            log_skills[skill_key] = {
+                "first_seen_mtime":  current_mtime,
+                "last_known_mtime":  current_mtime,
+                "description_snapshot": skill_data["raw_description"],
+            }
+        else:
+            last_mtime = log_entry.get("last_known_mtime", current_mtime)
+            if current_mtime != last_mtime and age_hours < NOVIDADES_WINDOW_H:
+                status = "updated"
+                old_desc = log_entry.get("description_snapshot", "")
+                diff_html = word_diff_html(old_desc, skill_data["raw_description"])
+                # Atualizar snapshot
+                log_skills[skill_key]["last_known_mtime"] = current_mtime
+                log_skills[skill_key]["description_snapshot"] = skill_data["raw_description"]
+            else:
+                status = "unchanged"
+
         areas  = SKILL_AREAS.get(skill_key, ["gen"])
         meta   = SKILL_META.get(skill_key, {"icon": "⚡", "type": "Skill", "auto": False})
         detail = SKILL_DETAILS.get(skill_key, {})
+
         skills.append({
-            "key":          skill_key,
-            "name":         skill_data["name"],
-            "description":  skill_data["description"],
-            "triggers":     skill_data["triggers"],
-            "areas":        areas,
-            "icon":         meta.get("icon", "⚡"),
-            "type":         meta.get("type", "Skill"),
-            "auto":         meta.get("auto", False),
-            "prompt":       detail.get("prompt", ""),
-            "input":        detail.get("input", ""),
-            "output_label": detail.get("output_label", ""),
-            "output_type":  detail.get("output_type", "none"),
+            "key":           skill_key,
+            "name":          skill_data["name"],
+            "description":   skill_data["description"],
+            "triggers":      skill_data["triggers"],
+            "areas":         areas,
+            "icon":          meta.get("icon", "⚡"),
+            "type":          meta.get("type", "Skill"),
+            "auto":          meta.get("auto", False),
+            "prompt":        detail.get("prompt", ""),
+            "input":         detail.get("input", ""),
+            "output_label":  detail.get("output_label", ""),
+            "output_type":   detail.get("output_type", "none"),
             "output_preview": detail.get("output_preview", ""),
+            "status":        status,       # new | updated | unchanged
+            "age_hours":     age_hours,
+            "diff_html":     diff_html,
         })
+
+    seen_log["skills"] = log_skills
+    seen_log["last_run"] = now_ts
+    save_seen_log(seen_log)
     return skills
 
 
@@ -490,7 +530,8 @@ OUTPUT_TYPE_LABELS = {
     "none":        "",
 }
 
-def render_card(skill):
+
+def render_card(skill, novidade_badge=""):
     areas_str = " ".join(skill["areas"])
     primary_area = skill["areas"][0] if skill["areas"] else "gen"
     icon_bg, _ = AREA_COLORS.get(primary_area, ("#f1f5f9", "#64748b"))
@@ -505,13 +546,15 @@ def render_card(skill):
         f'<span class="tag {AREA_TAG_CLASS.get(a,"tag-gen")}">{AREA_LABELS.get(a,a)}</span>'
         for a in skill["areas"]
     )
-    auto_badge = '<span class="card-auto-badge">Automatizável</span>' if skill["auto"] else ""
-    has_detail = bool(skill["prompt"] or skill["input"] or skill["output_label"])
-    detail_hint = '<div class="card-detail-hint">Ver detalhes →</div>' if has_detail else ""
+    auto_badge   = '<span class="card-auto-badge">Automatizável</span>' if skill["auto"] else ""
+    has_detail   = bool(skill["prompt"] or skill["input"] or skill["output_label"])
+    detail_hint  = '<div class="card-detail-hint">Ver detalhes →</div>' if has_detail else ""
+    safe_key     = html_module.escape(skill["key"])
+    badge_html   = f'<div class="nov-badge {skill["status"]}">{novidade_badge}</div>' if novidade_badge else ""
 
-    safe_key = html_module.escape(skill["key"])
     return f"""
     <div class="skill-card" data-areas="{areas_str}" data-key="{safe_key}" onclick="openModal('{safe_key}')" role="button" tabindex="0">
+      {badge_html}
       <div class="card-header">
         <div class="card-icon" style="background:{icon_bg};">{skill["icon"]}</div>
         <div class="card-meta">
@@ -541,6 +584,30 @@ def render_section(area_key, skills):
   </div>"""
 
 
+def render_novidades_section(skills):
+    new_skills     = [s for s in skills if s["status"] == "new"]
+    updated_skills = [s for s in skills if s["status"] == "updated"]
+
+    if not new_skills and not updated_skills:
+        return '<div class="nov-empty"><div style="font-size:36px">✨</div><div>Nenhuma novidade nos últimos 2 dias.</div></div>'
+
+    html_parts = []
+
+    if new_skills:
+        cards = "\n".join(render_card(s, "🆕 Nova") for s in new_skills)
+        html_parts.append(f"""
+  <div class="section-title" data-section="nov-new">Novas skills adicionadas</div>
+  <div class="skills-grid">{cards}</div>""")
+
+    if updated_skills:
+        cards = "\n".join(render_card(s, "↑ Atualizada") for s in updated_skills)
+        html_parts.append(f"""
+  <div class="section-title" data-section="nov-updated" style="margin-top:40px">Skills melhoradas recentemente</div>
+  <div class="skills-grid">{cards}</div>""")
+
+    return "\n".join(html_parts)
+
+
 def render_modals(skills):
     modals = []
     for s in skills:
@@ -548,8 +615,8 @@ def render_modals(skills):
             continue
         safe_key = html_module.escape(s["key"])
         primary_area = s["areas"][0] if s["areas"] else "gen"
-        _, accent = AREA_COLORS.get(primary_area, ("#f1f5f9","#64748b"))
-        icon_bg, _ = AREA_COLORS.get(primary_area, ("#f1f5f9","#64748b"))
+        _, accent = AREA_COLORS.get(primary_area, ("#f1f5f9", "#64748b"))
+        icon_bg, _ = AREA_COLORS.get(primary_area, ("#f1f5f9", "#64748b"))
 
         tags_html = "".join(
             f'<span class="tag {AREA_TAG_CLASS.get(a,"tag-gen")}">{AREA_LABELS.get(a,a)}</span>'
@@ -562,22 +629,42 @@ def render_modals(skills):
             if lbl:
                 output_label_badge = f'<span class="modal-output-badge">{lbl}</span>'
 
+        # Status badge in modal header
+        status_badge = ""
+        if s["status"] == "new":
+            status_badge = '<span class="modal-status-badge new">🆕 Nova</span>'
+        elif s["status"] == "updated":
+            status_badge = '<span class="modal-status-badge updated">↑ Atualizada</span>'
+
         input_block = ""
         if s["input"]:
-            safe_input = html_module.escape(s["input"])
             input_block = f"""
             <div class="modal-info-block">
               <div class="modal-info-label">📥 O que você precisa fornecer</div>
-              <div class="modal-info-text">{safe_input}</div>
+              <div class="modal-info-text">{html_module.escape(s["input"])}</div>
             </div>"""
 
         output_block = ""
         if s["output_label"]:
-            safe_output_label = html_module.escape(s["output_label"])
             output_block = f"""
             <div class="modal-info-block">
               <div class="modal-info-label">📤 O que você recebe</div>
-              <div class="modal-info-text">{safe_output_label} {output_label_badge}</div>
+              <div class="modal-info-text">{html_module.escape(s["output_label"])} {output_label_badge}</div>
+            </div>"""
+
+        # Changelog block (only for updated skills with a diff)
+        changelog_block = ""
+        if s["status"] == "updated" and s.get("diff_html"):
+            changelog_block = f"""
+            <div class="modal-info-block modal-changelog">
+              <div class="modal-info-label">🔄 O que mudou</div>
+              <div class="modal-diff-text">{s["diff_html"]}</div>
+            </div>"""
+        elif s["status"] == "updated":
+            changelog_block = """
+            <div class="modal-info-block modal-changelog">
+              <div class="modal-info-label">🔄 O que mudou</div>
+              <div class="modal-info-text" style="color:#64748b;font-style:italic">Configuração interna atualizada (lógica, referências ou fluxo de execução).</div>
             </div>"""
 
         preview_block = ""
@@ -607,7 +694,7 @@ def render_modals(skills):
         <div class="modal-header-left">
           <div class="modal-icon" style="background:{icon_bg}">{s["icon"]}</div>
           <div>
-            <div class="modal-title">{s["name"]}</div>
+            <div class="modal-title">{s["name"]} {status_badge}</div>
             <div class="modal-tags">{tags_html} {auto_badge}</div>
           </div>
         </div>
@@ -619,6 +706,7 @@ def render_modals(skills):
             <div class="modal-info-label">📌 O que faz</div>
             <div class="modal-info-text">{s["description"]}</div>
           </div>
+          {changelog_block}
           {input_block}
           {output_block}
           {prompt_block}
@@ -633,21 +721,26 @@ def render_modals(skills):
 
 
 def generate_html(skills):
-    counts = area_counts(skills)
-    total  = len(skills)
+    counts     = area_counts(skills)
+    total      = len(skills)
     auto_count = sum(1 for s in skills if s["auto"])
-    now    = datetime.now(timezone.utc).strftime("%d/%m/%Y às %H:%Mh UTC")
+    now        = datetime.now(timezone.utc).strftime("%d/%m/%Y às %H:%Mh UTC")
 
-    sections_html = "\n".join(render_section(a, skills) for a in AREA_LABELS)
-    modals_html   = render_modals(skills)
+    new_count     = sum(1 for s in skills if s["status"] == "new")
+    updated_count = sum(1 for s in skills if s["status"] == "updated")
+    nov_total     = new_count + updated_count
 
-    # Build JS skills data for modal lookup
-    skills_json_parts = []
-    for s in skills:
-        skills_json_parts.append(
-            f'"{s["key"]}": {json.dumps({"name": s["name"], "prompt": s.get("prompt","")}, ensure_ascii=False)}'
-        )
+    novidades_html = render_novidades_section(skills)
+    sections_html  = "\n".join(render_section(a, skills) for a in AREA_LABELS)
+    modals_html    = render_modals(skills)
+
+    skills_json_parts = [
+        f'"{s["key"]}": {json.dumps({"name": s["name"], "prompt": s.get("prompt","")}, ensure_ascii=False)}'
+        for s in skills
+    ]
     skills_js = "{" + ",".join(skills_json_parts) + "}"
+
+    nov_dot_pulse = 'class="filter-dot pulse-dot"' if nov_total > 0 else 'class="filter-dot"'
 
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
@@ -662,13 +755,13 @@ def generate_html(skills):
       --sup:#f59e0b; --sup-light:#fffbeb;
       --com:#ec4899; --com-light:#fdf2f8;
       --gen:#64748b; --gen-light:#f8fafc;
+      --nov:#8b5cf6; --nov-light:#f5f3ff;
       --bg:#f1f5f9; --card-bg:#ffffff;
       --text:#1e293b; --muted:#64748b; --border:#e2e8f0; --radius:14px;
     }}
     * {{ box-sizing:border-box; margin:0; padding:0; }}
     body {{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }}
 
-    /* ── Header ── */
     .header {{ background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%); padding:40px 48px 36px; color:white; }}
     .header-inner {{ max-width:1280px; margin:0 auto; }}
     .header-logo {{ font-size:13px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#94a3b8; margin-bottom:10px; }}
@@ -680,12 +773,12 @@ def generate_html(skills):
     .stat-label {{ font-size:12px; color:#94a3b8; margin-top:4px; }}
     .updated {{ font-size:11px; color:#475569; margin-top:20px; }}
 
-    /* ── Filters ── */
     .filters-bar {{ background:white; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; }}
     .filters-inner {{ max-width:1280px; margin:0 auto; padding:0 48px; display:flex; gap:4px; overflow-x:auto; scrollbar-width:none; }}
     .filters-inner::-webkit-scrollbar {{ display:none; }}
     .filter-btn {{ display:flex; align-items:center; gap:8px; padding:14px 20px; border:none; background:transparent; font-size:14px; font-weight:500; color:var(--muted); cursor:pointer; white-space:nowrap; border-bottom:3px solid transparent; transition:all .18s; }}
     .filter-btn:hover {{ color:var(--text); }}
+    .filter-btn.active.nov {{ border-bottom-color:var(--nov); color:var(--nov); }}
     .filter-btn.active.all {{ border-bottom-color:#0f172a; color:#0f172a; }}
     .filter-btn.active.am  {{ border-bottom-color:var(--am); color:var(--am); }}
     .filter-btn.active.ob  {{ border-bottom-color:var(--ob); color:var(--ob); }}
@@ -694,15 +787,17 @@ def generate_html(skills):
     .filter-btn.active.gen {{ border-bottom-color:var(--gen); color:var(--gen); }}
     .filter-dot {{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }}
     .filter-count {{ background:#f1f5f9; color:#64748b; font-size:12px; font-weight:600; padding:1px 7px; border-radius:99px; }}
+    .filter-count.hot {{ background:var(--nov-light); color:var(--nov); }}
 
-    /* ── Main ── */
+    @keyframes pulse {{ 0%,100% {{ box-shadow:0 0 0 0 rgba(139,92,246,.4); }} 50% {{ box-shadow:0 0 0 5px rgba(139,92,246,0); }} }}
+    .pulse-dot {{ animation:pulse 2s infinite; }}
+
     .main {{ max-width:1280px; margin:0 auto; padding:36px 48px; }}
     .section-title {{ font-size:12px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:20px; margin-top:40px; display:flex; align-items:center; gap:10px; }}
     .section-title:first-of-type {{ margin-top:0; }}
     .section-title::after {{ content:''; flex:1; height:1px; background:var(--border); }}
     .skills-grid {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:20px; }}
 
-    /* ── Cards ── */
     .skill-card {{ background:var(--card-bg); border:1px solid var(--border); border-radius:var(--radius); padding:24px; display:flex; flex-direction:column; gap:14px; transition:box-shadow .2s,transform .2s,border-color .2s; cursor:pointer; position:relative; }}
     .skill-card:hover {{ box-shadow:0 8px 24px rgba(0,0,0,.09); transform:translateY(-2px); border-color:#cbd5e1; }}
     .skill-card:focus {{ outline:2px solid var(--am); outline-offset:2px; }}
@@ -726,7 +821,14 @@ def generate_html(skills):
     .card-detail-hint {{ margin-left:auto; font-size:12px; font-weight:500; color:#94a3b8; transition:color .15s; }}
     .skill-card:hover .card-detail-hint {{ color:var(--am); }}
 
-    /* ── Legend ── */
+    /* Novidade badge on card */
+    .nov-badge {{ position:absolute; top:14px; right:14px; font-size:10px; font-weight:700; padding:3px 9px; border-radius:99px; }}
+    .nov-badge.new     {{ background:var(--nov-light); color:var(--nov); border:1px solid #ddd6fe; }}
+    .nov-badge.updated {{ background:#fffbeb; color:#b45309; border:1px solid #fde68a; }}
+
+    /* Novidades empty state */
+    .nov-empty {{ text-align:center; padding:60px 20px; color:var(--muted); }}
+
     .legend {{ background:white; border:1px solid var(--border); border-radius:var(--radius); padding:20px 24px; margin-bottom:32px; display:flex; flex-wrap:wrap; gap:16px; align-items:center; }}
     .legend-label {{ font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; flex-shrink:0; }}
     .legend-items {{ display:flex; flex-wrap:wrap; gap:10px; }}
@@ -735,63 +837,49 @@ def generate_html(skills):
     .empty-state {{ text-align:center; padding:60px 20px; color:var(--muted); display:none; }}
     .empty-state.visible {{ display:block; }}
 
-    /* ── Modal overlay ── */
+    /* ── Modal ── */
     .modal-overlay {{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.55); backdrop-filter:blur(4px); z-index:1000; align-items:center; justify-content:center; padding:24px; }}
     .modal-overlay.open {{ display:flex; }}
-
-    .modal-panel {{
-      background:white; border-radius:20px; max-width:900px; width:100%;
-      max-height:90vh; overflow:hidden; display:flex; flex-direction:column;
-      box-shadow:0 24px 64px rgba(0,0,0,.2);
-      animation: modalIn .22s cubic-bezier(.34,1.3,.64,1);
-    }}
+    .modal-panel {{ background:white; border-radius:20px; max-width:900px; width:100%; max-height:90vh; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,.2); animation:modalIn .22s cubic-bezier(.34,1.3,.64,1); }}
     @keyframes modalIn {{ from {{ opacity:0; transform:scale(.95) translateY(8px); }} to {{ opacity:1; transform:none; }} }}
-
-    .modal-header {{
-      display:flex; align-items:center; justify-content:space-between;
-      padding:22px 28px 20px; border-bottom:1px solid var(--border);
-      flex-shrink:0;
-    }}
+    .modal-header {{ display:flex; align-items:center; justify-content:space-between; padding:22px 28px 20px; border-bottom:1px solid var(--border); flex-shrink:0; }}
     .modal-header-left {{ display:flex; align-items:center; gap:16px; }}
     .modal-icon {{ width:52px; height:52px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:26px; flex-shrink:0; }}
-    .modal-title {{ font-size:20px; font-weight:700; color:var(--text); }}
+    .modal-title {{ font-size:20px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }}
+    .modal-status-badge {{ font-size:12px; font-weight:600; padding:3px 10px; border-radius:99px; }}
+    .modal-status-badge.new     {{ background:var(--nov-light); color:var(--nov); border:1px solid #ddd6fe; }}
+    .modal-status-badge.updated {{ background:#fffbeb; color:#b45309; border:1px solid #fde68a; }}
     .modal-tags {{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }}
     .modal-output-badge {{ font-size:11px; font-weight:600; padding:3px 10px; border-radius:6px; background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }}
     .modal-close {{ width:36px; height:36px; border-radius:50%; border:none; background:#f1f5f9; cursor:pointer; font-size:16px; color:#64748b; display:flex; align-items:center; justify-content:center; transition:background .15s; flex-shrink:0; }}
     .modal-close:hover {{ background:#e2e8f0; color:var(--text); }}
-
-    .modal-body {{
-      display:grid; grid-template-columns:1fr 1fr; gap:0;
-      overflow-y:auto; flex:1;
-    }}
-    .modal-left {{ padding:24px 28px; border-right:1px solid var(--border); display:flex; flex-direction:column; gap:20px; }}
+    .modal-body {{ display:grid; grid-template-columns:1fr 1fr; gap:0; overflow-y:auto; flex:1; }}
+    .modal-left {{ padding:24px 28px; border-right:1px solid var(--border); display:flex; flex-direction:column; gap:20px; overflow-y:auto; }}
     .modal-right {{ padding:24px 28px; background:#fafafa; display:flex; flex-direction:column; gap:16px; overflow-y:auto; }}
-
     .modal-info-block {{ display:flex; flex-direction:column; gap:8px; }}
     .modal-info-label {{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }}
     .modal-info-text {{ font-size:14px; color:#334155; line-height:1.65; }}
 
-    /* Prompt section */
+    /* Changelog / diff */
+    .modal-changelog {{ background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:12px 14px; }}
+    .modal-changelog .modal-info-label {{ color:#b45309; }}
+    .modal-diff-text {{ font-size:13.5px; color:#334155; line-height:1.7; }}
+    ins.diff-ins {{ background:#dcfce7; color:#166534; text-decoration:none; border-radius:3px; padding:1px 3px; }}
+    del.diff-del {{ background:#fee2e2; color:#991b1b; text-decoration:line-through; border-radius:3px; padding:1px 3px; }}
+
     .modal-prompt-section {{ margin-top:auto; padding-top:16px; border-top:1px solid var(--border); }}
     .modal-prompt-label {{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:10px; }}
     .modal-prompt-box {{ background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:14px 16px; display:flex; align-items:flex-start; gap:12px; }}
     .modal-prompt-text {{ font-size:13px; color:#334155; flex:1; line-height:1.5; font-family:'SF Mono','Fira Code',monospace; }}
-    .modal-copy-btn {{
-      flex-shrink:0; padding:7px 14px; background:#0f172a; color:white;
-      border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;
-      transition:background .15s, transform .1s;
-      white-space:nowrap;
-    }}
+    .modal-copy-btn {{ flex-shrink:0; padding:7px 14px; background:#0f172a; color:white; border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:background .15s,transform .1s; white-space:nowrap; }}
     .modal-copy-btn:hover {{ background:#1e293b; }}
     .modal-copy-btn:active {{ transform:scale(.96); }}
     .modal-copy-btn.copied {{ background:#16a34a; }}
-
-    /* Preview section */
     .modal-preview-section {{ display:flex; flex-direction:column; gap:10px; }}
     .modal-preview-label {{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }}
     .modal-preview-box {{ background:white; border:1px solid var(--border); border-radius:12px; padding:16px; overflow:hidden; font-size:13px; }}
 
-    /* ── Preview styles: Plan ── */
+    /* ── Preview component styles ── */
     .prev-plan-header {{ font-size:13px; font-weight:600; color:var(--text); margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; }}
     .prev-date {{ font-size:11px; color:var(--muted); font-weight:400; }}
     .prev-plan-item {{ display:flex; gap:10px; margin-bottom:10px; }}
@@ -801,8 +889,6 @@ def generate_html(skills):
     .prev-plan-item.p2 .prev-priority {{ background:#f0fdf4; color:#16a34a; }}
     .prev-content strong {{ font-size:13px; color:var(--text); display:block; margin-bottom:3px; }}
     .prev-content p {{ font-size:12px; color:#64748b; line-height:1.5; }}
-
-    /* ── Preview styles: Report ── */
     .prev-report-header {{ font-size:13px; font-weight:600; color:var(--text); margin-bottom:10px; }}
     .prev-report-stats {{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }}
     .rst {{ font-size:11px; font-weight:600; padding:3px 10px; border-radius:99px; }}
@@ -819,16 +905,12 @@ def generate_html(skills):
     .act.merge  {{ background:#fef2f2; color:#dc2626; }}
     .act.review {{ background:#fffbeb; color:#d97706; }}
     .act.ok     {{ background:#f0fdf4; color:#16a34a; }}
-
-    /* ── Preview styles: CX patterns ── */
     .cx-report .prev-report-stats .rst {{ background:#f1f5f9; color:#334155; }}
     .cx-patterns {{ display:flex; flex-direction:column; gap:8px; }}
     .cx-pat {{ position:relative; padding:6px 8px; background:#f8fafc; border-radius:6px; }}
     .cx-pat-bar {{ position:absolute; left:0; top:0; bottom:0; background:rgba(99,102,241,.1); border-radius:6px; }}
     .cx-pat-name {{ font-size:12px; font-weight:600; color:var(--text); position:relative; }}
     .cx-pat-count {{ font-size:11px; color:var(--muted); position:relative; float:right; }}
-
-    /* ── Preview styles: Docx ── */
     .prev-docx {{ font-size:12px; }}
     .prev-docx-header {{ display:flex; align-items:center; gap:12px; padding-bottom:12px; border-bottom:2px solid #0f172a; margin-bottom:12px; }}
     .docx-logo {{ width:36px; height:36px; background:#0f172a; color:white; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; flex-shrink:0; }}
@@ -837,8 +919,6 @@ def generate_html(skills):
     .prev-docx-body p {{ color:#334155; margin-bottom:6px; }}
     .docx-clause {{ color:#334155; margin-bottom:6px; padding:6px 10px; background:#f8fafc; border-left:3px solid #e2e8f0; border-radius:0 4px 4px 0; }}
     .docx-clause-faded {{ color:#94a3b8; font-style:italic; font-size:11px; }}
-
-    /* ── Preview styles: PPTX ── */
     .prev-slides {{ display:flex; flex-direction:column; gap:10px; }}
     .prev-slide {{ background:linear-gradient(135deg,#1e293b,#334155); border-radius:10px; padding:20px; color:white; }}
     .prev-slide-label {{ font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:#94a3b8; margin-bottom:6px; }}
@@ -851,8 +931,6 @@ def generate_html(skills):
     .prev-slide-strip {{ display:flex; gap:6px; }}
     .strip-slide {{ flex:1; height:8px; border-radius:3px; background:#e2e8f0; }}
     .strip-slide.sel {{ background:var(--am); }}
-
-    /* ── Preview styles: Slack ── */
     .prev-slack {{ font-size:13px; }}
     .prev-slack-header {{ font-size:12px; font-weight:700; color:#1d1c1d; padding-bottom:10px; border-bottom:1px solid var(--border); margin-bottom:10px; }}
     .slack-hash {{ color:#64748b; margin-right:2px; }}
@@ -863,8 +941,6 @@ def generate_html(skills):
     .slack-name {{ font-weight:700; font-size:13px; color:#1d1c1d; }}
     .slack-time {{ font-size:11px; color:#64748b; margin-left:6px; }}
     .slack-text {{ font-size:13px; color:#1d1c1d; margin-top:2px; line-height:1.5; }}
-
-    /* ── Preview styles: Action ── */
     .prev-action {{ font-size:13px; }}
     .prev-action-title {{ font-size:13px; font-weight:700; color:var(--text); margin-bottom:10px; }}
     .prev-action-item {{ display:flex; gap:10px; margin-bottom:8px; align-items:flex-start; }}
@@ -875,7 +951,6 @@ def generate_html(skills):
     .act-text {{ font-size:12px; color:#334155; line-height:1.5; }}
     .prev-action-summary {{ font-size:11px; color:var(--muted); margin-top:10px; padding-top:8px; border-top:1px solid var(--border); }}
 
-    /* ── Responsive ── */
     @media (max-width:768px) {{
       .header {{ padding:28px 24px; }}
       .filters-inner {{ padding:0 24px; }}
@@ -898,6 +973,7 @@ def generate_html(skills):
       <div class="stat"><span class="stat-num">{total}</span><span class="stat-label">skills disponíveis</span></div>
       <div class="stat"><span class="stat-num">{len(AREA_LABELS)}</span><span class="stat-label">áreas cobertas</span></div>
       <div class="stat"><span class="stat-num">{auto_count}</span><span class="stat-label">automatizáveis</span></div>
+      {"" if not nov_total else f'<div class="stat"><span class="stat-num" style="color:#a78bfa">{nov_total}</span><span class="stat-label">novidades hoje</span></div>'}
     </div>
     <div class="updated">⟳ Atualizado automaticamente em {now}</div>
   </div>
@@ -905,7 +981,11 @@ def generate_html(skills):
 
 <div class="filters-bar">
   <div class="filters-inner">
-    <button class="filter-btn active all" onclick="filterSkills('all',this)">
+    <button class="filter-btn nov{"" if not nov_total else " active nov"}" onclick="filterSkills('nov',this)">
+      <span {nov_dot_pulse} style="background:var(--nov)"></span> Novidades
+      <span class="filter-count{"" if not nov_total else " hot"}">{nov_total}</span>
+    </button>
+    <button class="filter-btn{"" if nov_total else " active all"} all" onclick="filterSkills('all',this)">
       <span class="filter-dot" style="background:#0f172a"></span> Todas as Áreas
       <span class="filter-count">{total}</span>
     </button>
@@ -952,7 +1032,15 @@ def generate_html(skills):
     <div style="font-size:15px">Nenhuma skill encontrada.</div>
   </div>
 
-  {sections_html}
+  <!-- Novidades section (shown only when nov tab active) -->
+  <div id="novidades-section" style="display:{'block' if nov_total else 'none'}">
+    {novidades_html}
+  </div>
+
+  <!-- Regular area sections -->
+  <div id="areas-section" style="display:{'none' if nov_total else 'block'}">
+    {sections_html}
+  </div>
 </div>
 
 {modals_html}
@@ -963,14 +1051,30 @@ def generate_html(skills):
   function filterSkills(area, btn) {{
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    const cards = document.querySelectorAll('.skill-card');
-    const sections = document.querySelectorAll('.section-title');
+
+    const novSection   = document.getElementById('novidades-section');
+    const areasSection = document.getElementById('areas-section');
+
+    if (area === 'nov') {{
+      novSection.style.display   = 'block';
+      areasSection.style.display = 'none';
+      document.getElementById('empty-state').classList.remove('visible');
+      return;
+    }}
+
+    novSection.style.display   = 'none';
+    areasSection.style.display = 'block';
+
+    const cards    = areasSection.querySelectorAll('.skill-card');
+    const sections = areasSection.querySelectorAll('.section-title');
+
     if (area === 'all') {{
       cards.forEach(c => c.classList.remove('hidden'));
       sections.forEach(s => {{ s.style.display=''; if(s.nextElementSibling) s.nextElementSibling.style.display=''; }});
       document.getElementById('empty-state').classList.remove('visible');
       return;
     }}
+
     cards.forEach(card => {{
       card.classList.toggle('hidden', !card.dataset.areas.split(' ').includes(area));
     }});
@@ -981,7 +1085,7 @@ def generate_html(skills):
       if (grid) grid.style.display = vis ? '' : 'none';
     }});
     document.getElementById('empty-state').classList.toggle(
-      'visible', !document.querySelectorAll('.skill-card:not(.hidden)').length
+      'visible', !areasSection.querySelectorAll('.skill-card:not(.hidden)').length
     );
   }}
 
@@ -1016,15 +1120,11 @@ def generate_html(skills):
     event.stopPropagation();
     const el = document.getElementById('prompt-' + key);
     if (!el) return;
-    const text = el.textContent;
-    navigator.clipboard.writeText(text).then(() => {{
+    navigator.clipboard.writeText(el.textContent).then(() => {{
       const btn = event.currentTarget;
       btn.textContent = '✓ Copiado!';
       btn.classList.add('copied');
-      setTimeout(() => {{
-        btn.textContent = 'Copiar prompt';
-        btn.classList.remove('copied');
-      }}, 2000);
+      setTimeout(() => {{ btn.textContent = 'Copiar prompt'; btn.classList.remove('copied'); }}, 2000);
     }});
   }}
 </script>
@@ -1034,7 +1134,9 @@ def generate_html(skills):
 
 if __name__ == "__main__":
     skills = collect_skills()
+    new_count     = sum(1 for s in skills if s["status"] == "new")
+    updated_count = sum(1 for s in skills if s["status"] == "updated")
     html   = generate_html(skills)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         f.write(html)
-    print(f"✅ index.html gerado com {len(skills)} skills em {OUTPUT_PATH}")
+    print(f"✅ index.html gerado com {len(skills)} skills ({new_count} novas, {updated_count} atualizadas)")

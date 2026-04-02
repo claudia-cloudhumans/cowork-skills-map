@@ -1,5 +1,8 @@
 {
   "skill_areas": {
+    "ids-quality-eval":         ["am", "ob"],
+    "sales-diagnostico":        ["com", "ob"],
+    "typebot-prompt-agent":     ["sup", "ob"],
     "ch-action-plan":           ["am"],
     "ch-qbr-review":            ["am", "com"],
     "ids-duplicate-analysis":   ["am", "ob"],
@@ -26,6 +29,9 @@
     "create-cowork-plugin":     ["gen"]
   },
   "skill_meta": {
+    "ids-quality-eval":         { "icon": "⭐", "type": "📊 Análise",       "auto": false },
+    "sales-diagnostico":        { "icon": "🔬", "type": "📊 Análise",       "auto": false },
+    "typebot-prompt-agent":     { "icon": "🤖", "type": "⚙️ Configuração",  "auto": false },
     "ch-action-plan":           { "icon": "🎯", "type": "📊 Análise",       "auto": false },
     "ch-qbr-review":            { "icon": "📋", "type": "📊 Análise",       "auto": false },
     "ids-duplicate-analysis":   { "icon": "🔍", "type": "📊 Análise",       "auto": false },
