@@ -226,12 +226,12 @@
     <h1>🗺️ Mapa de Skills</h1>
     <p>Tudo que o time pode automatizar ou delegar para o Claude Cowork. Clique em qualquer skill para ver detalhes e copiar o prompt de ativação.</p>
     <div class="header-stats">
-      <div class="stat"><span class="stat-num">25</span><span class="stat-label">skills disponíveis</span></div>
+      <div class="stat"><span class="stat-num">26</span><span class="stat-label">skills disponíveis</span></div>
       <div class="stat"><span class="stat-num">5</span><span class="stat-label">áreas cobertas</span></div>
       <div class="stat"><span class="stat-num">10</span><span class="stat-label">automatizáveis</span></div>
-      <div class="stat"><span class="stat-num" style="color:#a78bfa">10</span><span class="stat-label">novidades hoje</span></div>
+      <div class="stat"><span class="stat-num" style="color:#a78bfa">11</span><span class="stat-label">novidades hoje</span></div>
     </div>
-    <div class="updated">⟳ Atualizado automaticamente em 02/04/2026 às 23:50h UTC</div>
+    <div class="updated">⟳ Atualizado automaticamente em 03/04/2026 às 11:37h UTC</div>
   </div>
 </div>
 
@@ -239,11 +239,11 @@
   <div class="filters-inner">
     <button class="filter-btn nov active nov" onclick="filterSkills('nov',this)">
       <span class="filter-dot pulse-dot" style="background:var(--nov)"></span> Novidades
-      <span class="filter-count hot">10</span>
+      <span class="filter-count hot">11</span>
     </button>
     <button class="filter-btn all" onclick="filterSkills('all',this)">
       <span class="filter-dot" style="background:#0f172a"></span> Todas as Áreas
-      <span class="filter-count">25</span>
+      <span class="filter-count">26</span>
     </button>
     <button class="filter-btn am" onclick="filterSkills('am',this)">
       <span class="filter-dot" style="background:var(--am)"></span> Account Management
@@ -263,7 +263,7 @@
     </button>
     <button class="filter-btn gen" onclick="filterSkills('gen',this)">
       <span class="filter-dot" style="background:var(--gen)"></span> Produtividade Geral
-      <span class="filter-count">6</span>
+      <span class="filter-count">7</span>
     </button>
   </div>
 </div>
@@ -344,6 +344,24 @@
         <span class="card-type">📊 Análise</span>
         
         <div class="card-detail-hint">Ver detalhes →</div>
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="gen" data-key="ids-no-relevant-content" onclick="openModal('ids-no-relevant-content')" role="button" tabindex="0">
+      <div class="nov-badge new">🆕 Nova</div>
+      <div class="card-header">
+        <div class="card-icon" style="background:#f8fafc;">⚡</div>
+        <div class="card-meta">
+          <div class="card-name">ids-no-relevant-content</div>
+          <div class="card-trigger">"No relevant content found" · "gap semanal de conteúdo" · "quais conteúdos faltam na IDS"</div>
+        </div>
+      </div>
+      <div class="card-desc">Identifica semanalmente lacunas de conteúdo na IDS de um cliente Cloud Humans, a partir de conversas reais que foram transferidas para N2 por "No relevant content found". Extrai conversas do…</div>
+      <div class="card-tags"><span class="tag tag-gen">Produtividade Geral</span></div>
+      <div class="card-footer">
+        <span class="card-type">Skill</span>
+        
+        
       </div>
     </div>
 
@@ -1031,6 +1049,24 @@
       <div class="card-tags"><span class="tag tag-gen">Produtividade Geral</span></div>
       <div class="card-footer">
         <span class="card-type">📄 Documento</span>
+        
+        
+      </div>
+    </div>
+
+    <div class="skill-card" data-areas="gen" data-key="ids-no-relevant-content" onclick="openModal('ids-no-relevant-content')" role="button" tabindex="0">
+      
+      <div class="card-header">
+        <div class="card-icon" style="background:#f8fafc;">⚡</div>
+        <div class="card-meta">
+          <div class="card-name">ids-no-relevant-content</div>
+          <div class="card-trigger">"No relevant content found" · "gap semanal de conteúdo" · "quais conteúdos faltam na IDS"</div>
+        </div>
+      </div>
+      <div class="card-desc">Identifica semanalmente lacunas de conteúdo na IDS de um cliente Cloud Humans, a partir de conversas reais que foram transferidas para N2 por "No relevant content found". Extrai conversas do…</div>
+      <div class="card-tags"><span class="tag tag-gen">Produtividade Geral</span></div>
+      <div class="card-footer">
+        <span class="card-type">Skill</span>
         
         
       </div>
@@ -2253,7 +2289,7 @@
   </div>
 
 <script>
-  const SKILLS = {"aditivo-renovacao": {"name": "aditivo-renovacao", "prompt": "Fazer o aditivo de renovação do cliente [NOME]. [Cole o contrato original ou informe os dados manualmente]"},"board-unthread-sync": {"name": "board-unthread-sync", "prompt": "Rodar a sync do board com Unthread — verificar pendências de suporte"},"ch-action-plan": {"name": "ch-action-plan", "prompt": "Plano de ação para o cliente [NOME DO CLIENTE]"},"ch-qbr-review": {"name": "ch-qbr-review", "prompt": "Preparar QBR do cliente [NOME DO CLIENTE] para o trimestre atual"},"cs-task-gap-analysis": {"name": "cs-task-gap-analysis", "prompt": "Rodar o task gap analysis de CS — cruzar reuniões recentes com tasks abertas no Airtable"},"cx-create-knowledge-base": {"name": "cx-create-knowledge-base", "prompt": "Criar KB a partir dos padrões de tickets das últimas 4 semanas"},"cx-deep-analysis": {"name": "cx-deep-analysis", "prompt": "Analisar os tickets de suporte das últimas 4 semanas — onde o produto está gerando mais fricção?"},"daily-board-cleanup": {"name": "daily-board-cleanup", "prompt": "Fazer o cleanup do board — triagem diária de tickets tech"},"daily-task-sync": {"name": "daily-task-sync", "prompt": "Rodar o daily task sync — atualizar tasks do Airtable com base nas reuniões e mensagens dos últimos 3 dias"},"docx": {"name": "docx", "prompt": ""},"financeiro-task-sync": {"name": "financeiro-task-sync", "prompt": "Validar o financeiro — sincronizar conversas do Unthread com tasks no Airtable"},"ids-duplicate-analysis": {"name": "ids-duplicate-analysis", "prompt": "Analisar duplicatas na IDS do cliente [NOME]. Segue o CSV exportado da base."},"ids-gap-analysis": {"name": "ids-gap-analysis", "prompt": "Cruzar a IDS do cliente [NOME] com o diagnóstico. Segue o arquivo do diagnóstico."},"ids-quality-eval": {"name": "ids-quality-eval", "prompt": "Avaliar a qualidade dos conteúdos N1 da IDS do cliente [NOME]. Segue o CSV da base."},"pdf": {"name": "pdf", "prompt": ""},"pptx": {"name": "pptx", "prompt": ""},"sales-diagnostico": {"name": "sales-diagnostico", "prompt": "Rodar o diagnóstico automatizado para o prospect/cliente [NOME]. Segue o CSV de conversas."},"schedule": {"name": "schedule", "prompt": ""},"skill-creator": {"name": "skill-creator", "prompt": ""},"sunne-reply-suggester": {"name": "sunne-reply-suggester", "prompt": "Rodar sugestões de resposta para o #ch-sunne"},"typebot-prompt-agent": {"name": "typebot-prompt-agent", "prompt": "Abrir o prompt agent do Typebot"},"unthread-resolved-sweep": {"name": "unthread-resolved-sweep", "prompt": "Varrer tickets resolvidos no Unthread e mover para o status correto"},"volumetry-alert": {"name": "volumetry-alert", "prompt": "Rodar o alerta de volumetria — checar se algum cliente caiu de volume hoje"},"weekly-summary": {"name": "weekly-summary", "prompt": "Gerar o relatório semanal da operação"},"xlsx": {"name": "xlsx", "prompt": ""}};
+  const SKILLS = {"aditivo-renovacao": {"name": "aditivo-renovacao", "prompt": "Fazer o aditivo de renovação do cliente [NOME]. [Cole o contrato original ou informe os dados manualmente]"},"board-unthread-sync": {"name": "board-unthread-sync", "prompt": "Rodar a sync do board com Unthread — verificar pendências de suporte"},"ch-action-plan": {"name": "ch-action-plan", "prompt": "Plano de ação para o cliente [NOME DO CLIENTE]"},"ch-qbr-review": {"name": "ch-qbr-review", "prompt": "Preparar QBR do cliente [NOME DO CLIENTE] para o trimestre atual"},"cs-task-gap-analysis": {"name": "cs-task-gap-analysis", "prompt": "Rodar o task gap analysis de CS — cruzar reuniões recentes com tasks abertas no Airtable"},"cx-create-knowledge-base": {"name": "cx-create-knowledge-base", "prompt": "Criar KB a partir dos padrões de tickets das últimas 4 semanas"},"cx-deep-analysis": {"name": "cx-deep-analysis", "prompt": "Analisar os tickets de suporte das últimas 4 semanas — onde o produto está gerando mais fricção?"},"daily-board-cleanup": {"name": "daily-board-cleanup", "prompt": "Fazer o cleanup do board — triagem diária de tickets tech"},"daily-task-sync": {"name": "daily-task-sync", "prompt": "Rodar o daily task sync — atualizar tasks do Airtable com base nas reuniões e mensagens dos últimos 3 dias"},"docx": {"name": "docx", "prompt": ""},"financeiro-task-sync": {"name": "financeiro-task-sync", "prompt": "Validar o financeiro — sincronizar conversas do Unthread com tasks no Airtable"},"ids-duplicate-analysis": {"name": "ids-duplicate-analysis", "prompt": "Analisar duplicatas na IDS do cliente [NOME]. Segue o CSV exportado da base."},"ids-gap-analysis": {"name": "ids-gap-analysis", "prompt": "Cruzar a IDS do cliente [NOME] com o diagnóstico. Segue o arquivo do diagnóstico."},"ids-no-relevant-content": {"name": "ids-no-relevant-content", "prompt": ""},"ids-quality-eval": {"name": "ids-quality-eval", "prompt": "Avaliar a qualidade dos conteúdos N1 da IDS do cliente [NOME]. Segue o CSV da base."},"pdf": {"name": "pdf", "prompt": ""},"pptx": {"name": "pptx", "prompt": ""},"sales-diagnostico": {"name": "sales-diagnostico", "prompt": "Rodar o diagnóstico automatizado para o prospect/cliente [NOME]. Segue o CSV de conversas."},"schedule": {"name": "schedule", "prompt": ""},"skill-creator": {"name": "skill-creator", "prompt": ""},"sunne-reply-suggester": {"name": "sunne-reply-suggester", "prompt": "Rodar sugestões de resposta para o #ch-sunne"},"typebot-prompt-agent": {"name": "typebot-prompt-agent", "prompt": "Abrir o prompt agent do Typebot"},"unthread-resolved-sweep": {"name": "unthread-resolved-sweep", "prompt": "Varrer tickets resolvidos no Unthread e mover para o status correto"},"volumetry-alert": {"name": "volumetry-alert", "prompt": "Rodar o alerta de volumetria — checar se algum cliente caiu de volume hoje"},"weekly-summary": {"name": "weekly-summary", "prompt": "Gerar o relatório semanal da operação"},"xlsx": {"name": "xlsx", "prompt": ""}};
 
   function filterSkills(area, btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
