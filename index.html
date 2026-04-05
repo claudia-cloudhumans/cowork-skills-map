@@ -229,19 +229,19 @@
       <div class="stat"><span class="stat-num">26</span><span class="stat-label">skills disponíveis</span></div>
       <div class="stat"><span class="stat-num">5</span><span class="stat-label">áreas cobertas</span></div>
       <div class="stat"><span class="stat-num">10</span><span class="stat-label">automatizáveis</span></div>
-      <div class="stat"><span class="stat-num" style="color:#a78bfa">8</span><span class="stat-label">novidades hoje</span></div>
+      
     </div>
-    <div class="updated">⟳ Atualizado automaticamente em 04/04/2026 às 01:56h UTC</div>
+    <div class="updated">⟳ Atualizado automaticamente em 05/04/2026 às 14:12h UTC</div>
   </div>
 </div>
 
 <div class="filters-bar">
   <div class="filters-inner">
-    <button class="filter-btn nov active nov" onclick="filterSkills('nov',this)">
-      <span class="filter-dot pulse-dot" style="background:var(--nov)"></span> Novidades
-      <span class="filter-count hot">8</span>
+    <button class="filter-btn nov" onclick="filterSkills('nov',this)">
+      <span class="filter-dot" style="background:var(--nov)"></span> Novidades
+      <span class="filter-count">0</span>
     </button>
-    <button class="filter-btn all" onclick="filterSkills('all',this)">
+    <button class="filter-btn active all all" onclick="filterSkills('all',this)">
       <span class="filter-dot" style="background:#0f172a"></span> Todas as Áreas
       <span class="filter-count">26</span>
     </button>
@@ -289,157 +289,12 @@
   </div>
 
   <!-- Novidades section (shown only when nov tab active) -->
-  <div id="novidades-section" style="display:block">
-    
-  <div class="section-title" data-section="nov-new">Novas skills adicionadas</div>
-  <div class="skills-grid">
-    <div class="skill-card" data-areas="com am" data-key="aditivo-renovacao" onclick="openModal('aditivo-renovacao')" role="button" tabindex="0">
-      <div class="nov-badge new">🆕 Nova</div>
-      <div class="card-header">
-        <div class="card-icon" style="background:#fdf2f8;">📝</div>
-        <div class="card-meta">
-          <div class="card-name">aditivo-renovacao</div>
-          <div class="card-trigger">"fazer um aditivo" · "criar o termo de renovação" · "montar o aditivo do cliente X"</div>
-        </div>
-      </div>
-      <div class="card-desc">Redige termos aditivos de renovação contratual para clientes da Cloud Humans. Também use quando o usuário fornecer um contrato original e pedir para gerar o aditivo. Produz .docx profissional com…</div>
-      <div class="card-tags"><span class="tag tag-com">Comercial</span><span class="tag tag-am">Account Management</span></div>
-      <div class="card-footer">
-        <span class="card-type">📄 Documento</span>
-        
-        <div class="card-detail-hint">Ver detalhes →</div>
-      </div>
-    </div>
-
-    <div class="skill-card" data-areas="am ob" data-key="ids-gap-analysis" onclick="openModal('ids-gap-analysis')" role="button" tabindex="0">
-      <div class="nov-badge new">🆕 Nova</div>
-      <div class="card-header">
-        <div class="card-icon" style="background:#eef2ff;">📐</div>
-        <div class="card-meta">
-          <div class="card-name">ids-gap-analysis</div>
-          <div class="card-trigger">"cruzar a IDS com o diagnóstico" · "comparar a base com os conteúdos ideais" · "ver o que falta na IDS a partir do diagnóstico"</div>
-        </div>
-      </div>
-      <div class="card-desc">Cruza a IDS atual de um cliente Cloud Humans com os Conteúdos Ideais gerados pelo Diagnóstico Comercial Automatizado (Curva ABC) para identificar lacunas e oportunidades de melhoria na base de…</div>
-      <div class="card-tags"><span class="tag tag-am">Account Management</span><span class="tag tag-ob">Onboarding</span></div>
-      <div class="card-footer">
-        <span class="card-type">📊 Análise</span>
-        
-        <div class="card-detail-hint">Ver detalhes →</div>
-      </div>
-    </div>
-
-    <div class="skill-card" data-areas="gen" data-key="ids-no-relevant-content" onclick="openModal('ids-no-relevant-content')" role="button" tabindex="0">
-      <div class="nov-badge new">🆕 Nova</div>
-      <div class="card-header">
-        <div class="card-icon" style="background:#f8fafc;">⚡</div>
-        <div class="card-meta">
-          <div class="card-name">ids-no-relevant-content</div>
-          <div class="card-trigger">"No relevant content found" · "gap semanal de conteúdo" · "quais conteúdos faltam na IDS"</div>
-        </div>
-      </div>
-      <div class="card-desc">Identifica semanalmente lacunas de conteúdo na IDS de um cliente Cloud Humans, a partir de conversas reais que foram transferidas para N2 por "No relevant content found". Extrai conversas do…</div>
-      <div class="card-tags"><span class="tag tag-gen">Produtividade Geral</span></div>
-      <div class="card-footer">
-        <span class="card-type">Skill</span>
-        
-        
-      </div>
-    </div>
-
-    <div class="skill-card" data-areas="am ob" data-key="ids-quality-eval" onclick="openModal('ids-quality-eval')" role="button" tabindex="0">
-      <div class="nov-badge new">🆕 Nova</div>
-      <div class="card-header">
-        <div class="card-icon" style="background:#eef2ff;">⭐</div>
-        <div class="card-meta">
-          <div class="card-name">ids-quality-eval</div>
-          <div class="card-trigger">"qualidade da IDS" · "avaliar conteúdos" · "review de escrita da base"</div>
-        </div>
-      </div>
-      <div class="card-desc">Avalia a qualidade de escrita dos conteúdos N1 da IDS de um cliente Cloud Humans, gerando um relatório acionável com scores por conteúdo e sugestões concretas de reescrita. Também use quando o…</div>
-      <div class="card-tags"><span class="tag tag-am">Account Management</span><span class="tag tag-ob">Onboarding</span></div>
-      <div class="card-footer">
-        <span class="card-type">📊 Análise</span>
-        
-        <div class="card-detail-hint">Ver detalhes →</div>
-      </div>
-    </div>
-
-    <div class="skill-card" data-areas="com ob" data-key="sales-diagnostico" onclick="openModal('sales-diagnostico')" role="button" tabindex="0">
-      <div class="nov-badge new">🆕 Nova</div>
-      <div class="card-header">
-        <div class="card-icon" style="background:#fdf2f8;">🔬</div>
-        <div class="card-meta">
-          <div class="card-name">sales-diagnostico</div>
-          <div class="card-trigger">"diagnóstico automatizado" · "diagnóstico comercial" · "rodar diagnóstico"</div>
-        </div>
-      </div>
-      <div class="card-desc">Executa o Diagnóstico Automatizado de operações de atendimento ao cliente para prospects e clientes da Cloud Humans. Analisa conversas de suporte (CSV) para identificar TAGs/temas recorrentes,…</div>
-      <div class="card-tags"><span class="tag tag-com">Comercial</span><span class="tag tag-ob">Onboarding</span></div>
-      <div class="card-footer">
-        <span class="card-type">📊 Análise</span>
-        
-        <div class="card-detail-hint">Ver detalhes →</div>
-      </div>
-    </div>
-
-    <div class="skill-card" data-areas="gen" data-key="schedule" onclick="openModal('schedule')" role="button" tabindex="0">
-      <div class="nov-badge new">🆕 Nova</div>
-      <div class="card-header">
-        <div class="card-icon" style="background:#f8fafc;">⏰</div>
-        <div class="card-meta">
-          <div class="card-name">schedule</div>
-          
-        </div>
-      </div>
-      <div class="card-desc">"Create a scheduled task that can be run on demand or automatically on an interval."</div>
-      <div class="card-tags"><span class="tag tag-gen">Produtividade Geral</span></div>
-      <div class="card-footer">
-        <span class="card-type">⚙️ Configuração</span>
-        <span class="card-auto-badge">Automatizável</span>
-        
-      </div>
-    </div>
-
-    <div class="skill-card" data-areas="gen" data-key="skill-creator" onclick="openModal('skill-creator')" role="button" tabindex="0">
-      <div class="nov-badge new">🆕 Nova</div>
-      <div class="card-header">
-        <div class="card-icon" style="background:#f8fafc;">🛠️</div>
-        <div class="card-meta">
-          <div class="card-name">skill-creator</div>
-          
-        </div>
-      </div>
-      <div class="card-desc">Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a…</div>
-      <div class="card-tags"><span class="tag tag-gen">Produtividade Geral</span></div>
-      <div class="card-footer">
-        <span class="card-type">⚙️ Configuração</span>
-        
-        
-      </div>
-    </div>
-
-    <div class="skill-card" data-areas="sup ob" data-key="typebot-prompt-agent" onclick="openModal('typebot-prompt-agent')" role="button" tabindex="0">
-      <div class="nov-badge new">🆕 Nova</div>
-      <div class="card-header">
-        <div class="card-icon" style="background:#fffbeb;">🤖</div>
-        <div class="card-meta">
-          <div class="card-name">typebot-prompt-agent</div>
-          <div class="card-trigger">"abrir o prompt agent" · "criar um prompt para o Typebot" · "gerar um prompt GPT"</div>
-        </div>
-      </div>
-      <div class="card-desc">Abre o Typebot Prompt Agent — uma ferramenta visual interativa para criar e refinar prompts GPT para blocos de IA dentro de fluxos Typebot. Também use quando alguém mencionar "prompt com baixa…</div>
-      <div class="card-tags"><span class="tag tag-sup">Suporte</span><span class="tag tag-ob">Onboarding</span></div>
-      <div class="card-footer">
-        <span class="card-type">⚙️ Configuração</span>
-        
-        <div class="card-detail-hint">Ver detalhes →</div>
-      </div>
-    </div></div>
+  <div id="novidades-section" style="display:none">
+    <div class="nov-empty"><div style="font-size:36px">✨</div><div>Nenhuma novidade nos últimos 2 dias.</div></div>
   </div>
 
   <!-- Regular area sections -->
-  <div id="areas-section" style="display:none">
+  <div id="areas-section" style="display:block">
     
   <div class="section-title" data-section="am">Account Management</div>
   <div class="skills-grid">
@@ -1118,7 +973,7 @@
         <div class="modal-header-left">
           <div class="modal-icon" style="background:#fdf2f8">📝</div>
           <div>
-            <div class="modal-title">aditivo-renovacao <span class="modal-status-badge new">🆕 Nova</span></div>
+            <div class="modal-title">aditivo-renovacao </div>
             <div class="modal-tags"><span class="tag tag-com">Comercial</span><span class="tag tag-am">Account Management</span> </div>
           </div>
         </div>
@@ -1771,7 +1626,7 @@
         <div class="modal-header-left">
           <div class="modal-icon" style="background:#eef2ff">📐</div>
           <div>
-            <div class="modal-title">ids-gap-analysis <span class="modal-status-badge new">🆕 Nova</span></div>
+            <div class="modal-title">ids-gap-analysis </div>
             <div class="modal-tags"><span class="tag tag-am">Account Management</span><span class="tag tag-ob">Onboarding</span> </div>
           </div>
         </div>
@@ -1832,7 +1687,7 @@
         <div class="modal-header-left">
           <div class="modal-icon" style="background:#eef2ff">⭐</div>
           <div>
-            <div class="modal-title">ids-quality-eval <span class="modal-status-badge new">🆕 Nova</span></div>
+            <div class="modal-title">ids-quality-eval </div>
             <div class="modal-tags"><span class="tag tag-am">Account Management</span><span class="tag tag-ob">Onboarding</span> </div>
           </div>
         </div>
@@ -1893,7 +1748,7 @@
         <div class="modal-header-left">
           <div class="modal-icon" style="background:#fdf2f8">🔬</div>
           <div>
-            <div class="modal-title">sales-diagnostico <span class="modal-status-badge new">🆕 Nova</span></div>
+            <div class="modal-title">sales-diagnostico </div>
             <div class="modal-tags"><span class="tag tag-com">Comercial</span><span class="tag tag-ob">Onboarding</span> </div>
           </div>
         </div>
@@ -2009,7 +1864,7 @@
         <div class="modal-header-left">
           <div class="modal-icon" style="background:#fffbeb">🤖</div>
           <div>
-            <div class="modal-title">typebot-prompt-agent <span class="modal-status-badge new">🆕 Nova</span></div>
+            <div class="modal-title">typebot-prompt-agent </div>
             <div class="modal-tags"><span class="tag tag-sup">Suporte</span><span class="tag tag-ob">Onboarding</span> </div>
           </div>
         </div>
